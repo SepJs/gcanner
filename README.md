@@ -1,4 +1,4 @@
-# GameReqAnalyzer
+# Gcammer
 
 Premium Game System Requirements Analyzer - Cross-platform terminal UX
 
