@@ -1,0 +1,23 @@
+Package: game-req-analyzer
+Version: 1.0.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: libc6 (>= 2.28), libstdc++6 (>= 9), libgcc-s1 (>= 3.0)
+Maintainer: GameReqAnalyzer Team <team@gamereqanalyzer.com>
+Description: Premium Game System Requirements Analyzer
+ GameReqAnalyzer is a powerful tool for analyzing game directories and
+ generating detailed system requirements recommendations. It scans game
+ files, analyzes assets (textures, models, audio, scripts, executables),
+ and provides minimum and recommended hardware specifications based on
+ the actual requirements of the game.
+ .
+ Features:
+   - Comprehensive analysis of textures, 3D models, audio files, scripts, and executables
+   - Accurate requirements calculation based on actual asset analysis
+   - Up-to-date hardware database with CPU, GPU, RAM, and storage benchmark data
+   - Interactive terminal UI with colorized output and progress indicators
+   - Multiple output formats: terminal, JSON, CSV, HTML, and Markdown
+   - Cross-platform support for Windows, macOS, and Linux
+   - Extensible design for adding new file format analyzers
+Homepage: https://github.com/yourusername/GameReqAnalyzer

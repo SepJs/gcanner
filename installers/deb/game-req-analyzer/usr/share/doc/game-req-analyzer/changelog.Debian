@@ -1,0 +1,10 @@
+game-req-analyzer (1.0.0-1) unstable; urgency=medium
+
+  * Initial release.
+  * Complete implementation of game requirements analyzer
+  * Includes all analyzers: textures, models, audio, scripts, executables
+  * Hardware database with real benchmark data
+  * Interactive terminal UI with progress tracking
+  * Multiple output formats: terminal, JSON, CSV, HTML, Markdown
+
+ -- GameReqAnalyzer Team <team@gamereqanalyzer.com>  Thu, 09 Jul 2026 00:00:00 +0000

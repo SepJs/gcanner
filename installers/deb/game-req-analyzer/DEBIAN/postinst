@@ -1,0 +1,76 @@
+#!/bin/bash
+set -e
+
+# Post-installation script for game-req-analyzer
+
+echo "Setting up GameReqAnalyzer..."
+
+# Create default config directory if it doesn't exist
+mkdir -p /etc/game-req-analyzer
+mkdir -p /var/lib/game-req-analyzer/cache
+
+# Set permissions
+chmod 755 /usr/bin/game-req-analyzer
+chmod 755 /etc/game-req-analyzer
+chmod 755 /var/lib/game-req-analyzer/cache
+
+# Create default config if it if it doesn't exist
+if [ ! -f /etc/game-req-analyzer/config.json ]; then
+    cat > /etc/game-req-analyzer/config.json << 'CONFIG_EOF'
+{
+  "scan": {
+    "recursive": true,
+    "follow_symlinks": false,
+    "max_depth": 20,
+    "max_file_size": 107374182400,
+    "thread_count": 0,
+    "use_mmap": true,
+    "verify_checksums": false,
+    "excluded_dirs": [".git", ".svn", "node_modules", "__pycache__", ".vs", "build", "dist"],
+    "excluded_exts": [".tmp", ".temp", ".bak", ".backup", ".log", ".pid", ".lock"]
+  },
+  "analyzer": {
+    "analyze_textures": true,
+    "analyze_models": true,
+    "analyze_audio": true,
+    "analyze_scripts": true,
+    "analyze_executables": true,
+    "analyze_shaders": true,
+    "analyze_particles": true,
+    "analyze_physics": true,
+    "analyze_ai": true,
+    "analyze_network": true,
+    "texture_sample_count": 1000,
+    "model_sample_count": 500,
+    "compression_assumption": 0.3,
+    "lod_factor": 0.7
+  },
+  "hardware": {
+    "auto_update": true,
+    "update_interval_days": 7,
+    "cache_dir": "/var/lib/game-req-analyzer/cache",
+    "preferred_source": "passmark",
+    "include_mobile": false,
+    "include_workstation": true,
+    "include_server": false,
+    "min_benchmark_score": 1000
+  },
+  "output": {
+    "format": "terminal",
+    "output_file": "",
+    "verbose": false,
+    "show_progress": true,
+    "color_output": true,
+    "max_display_items": 20,
+    "show_recommendations": true,
+    "show_alternatives": true,
+    "show_bottlenecks": true
+  }
+}
+CONFIG_EOF
+    chmod 644 /etc/game-req-analyzer/config.json
+fi
+
+echo "GameReqAnalyzer has been installed successfully!"
+echo "You can run it with: game-req-analyzer"
+exit 0

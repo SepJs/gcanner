@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+# Pre-removal script for game-req-analyzer
+
+echo "Removing GameReqAnalyzer..."
+
+# Stop any running services (if applicable)
+# No services to stop for this application
+
+exit 0
