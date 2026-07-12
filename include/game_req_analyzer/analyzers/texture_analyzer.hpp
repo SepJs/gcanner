@@ -46,13 +46,14 @@ public:
     
     Result<std::vector<TextureInfo>> analyze(const std::vector<FileInfo>& textures);
     Result<TextureInfo> analyze_single(const FileInfo& texture);
-    [[nodiscard]] TextureStats stats() const { return stats_; }
+    Result<TextureInfo> analyze_texture(const Path& file_path);
+    [[nodiscard]] TextureStats stats() const;
     [[nodiscard]] String generate_report() const;
 
 private:
     AnalyzerConfig config_;
     TextureStats stats_;
-    std::mutex stats_mutex_;
+    mutable std::mutex stats_mutex_;
     
     Result<TextureInfo> analyze_dds(const Path& path);
     Result<TextureInfo> analyze_ktx(const Path& path);
@@ -65,11 +66,13 @@ private:
     Result<TextureInfo> analyze_exr(const Path& path);
     Result<TextureInfo> analyze_hdr(const Path& path);
     Result<TextureInfo> analyze_webp(const Path& path);
+    Result<TextureInfo> analyze_tiff(const Path& path);
     Result<TextureInfo> analyze_generic(const Path& path, FileType type);
-    
+
     u64 calculate_vram(const TextureInfo& tex) const;
     u32 calculate_mip_size(u32 w, u32 h, u32 block_size) const;
     String detect_compression_format(const std::vector<u8>& header, FileType type) const;
+    u64 file_size(const Path& path) const;
 };
 
 struct TextureFormatInfo {

@@ -1,4 +1,5 @@
 #include <game_req_analyzer/utils/time_utils.hpp>
+#include <game_req_analyzer/utils/string_utils.hpp>
 #include <chrono>
 #include <iomanip>
 #include <sstream>
@@ -60,7 +61,7 @@ String TimeUtils::format_rfc3339(TimePoint tp) {
 
 Result<TimePoint> TimeUtils::parse(StringView str, StringView format) {
     std::tm tm = {};
-    std::istringstream ss(String(str));
+    std::istringstream ss{String(str)};
     ss >> std::get_time(&tm, format.data());
     if (ss.fail()) return make_unexpected(MAKE_ERROR(ErrorCode::ParseError, "Failed to parse time"));
     return std::chrono::system_clock::from_time_t(std::mktime(&tm));

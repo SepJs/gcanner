@@ -48,7 +48,7 @@ public:
 private:
     AnalyzerConfig config_;
     ScriptStats stats_;
-    std::mutex stats_mutex_;
+    mutable std::mutex stats_mutex_;
     
     Result<ScriptInfo> analyze_lua(const Path& path);
     Result<ScriptInfo> analyze_python(const Path& path);

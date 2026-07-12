@@ -3,11 +3,12 @@
 #include <game_req_analyzer/utils/string_utils.hpp>
 #include <game_req_analyzer/utils/hash_utils.hpp>
 #include <game_req_analyzer/core/logger.hpp>
-#include <magic.h>
+#include <game_req_analyzer/utils/time_utils.hpp>
 #include <fstream>
 #include <cstring>
+#include <sys/stat.h>
 
-using namespace game_req;
+namespace game_req {
 
 FileTypeDetector& FileTypeDetector::instance() {
     static FileTypeDetector detector;
@@ -22,52 +23,52 @@ FileTypeDetector::FileTypeDetector() {
 
 void FileTypeDetector::init_default_signatures() {
     // Executable signatures
-    signatures_.push_back(FileType{{0x7f, 'E', 'L', 'F'}, 4, 0}); // ELF
-    signatures_.push_back(FileType{{'M', 'Z'}, 2, 0}); // DOS/PE
-    signatures_.push_back(FileType{{0xCF, 0xFA, 0xED, 0xFE}, 4, 0}); // Mach-O big endian
-    signatures_.push_back(FileType{{0xFE, 0xED, 0xFA, 0xCF}, 4, 0}); // Mach-O little endian
-    signatures_.push_back(FileType{{0xCA, 0xFE, 0xBA, 0xBE}, 4, 0}); // Java class
+    signatures_.push_back(FileSignature{{0x7f, 'E', 'L', 'F', 0,0,0,0,0,0,0,0,0,0,0,0}, 4, 0}); // ELF
+    signatures_.push_back(FileSignature{{'M', 'Z', 0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 2, 0}); // DOS/PE
+    signatures_.push_back(FileSignature{{0xCF, 0xFA, 0xED, 0xFE, 0,0,0,0,0,0,0,0,0,0,0,0}, 4, 0}); // Mach-O big endian
+    signatures_.push_back(FileSignature{{0xFE, 0xED, 0xFA, 0xCF, 0,0,0,0,0,0,0,0,0,0,0,0}, 4, 0}); // Mach-O little endian
+    signatures_.push_back(FileSignature{{0xCA, 0xFE, 0xBA, 0xBE, 0,0,0,0,0,0,0,0,0,0,0,0}, 4, 0}); // Java class
     
     // Archive signatures
-    signatures_.push_back(FileType{{'P', 'K', 0x03, 0x04}, 4, 0}); // ZIP
-    signatures_.push_back(FileType{{'R', 'a', 'r', '!'}, 4, 0}); // RAR
-    signatures_.push_back(FileType{{0x1F, 0x8B}, 2, 0}); // GZIP
-    signatures_.push_back(FileType{{'B', 'Z', 'h'}, 3, 0}); // BZIP2
-    signatures_.push_back(FileType{{0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C}, 6, 0}); // 7z
-    signatures_.push_back(FileType{{0xFD, '7', 'z', 'X', 'Z', 0x00}, 6, 0}); // XZ
+    signatures_.push_back(FileSignature{{'P', 'K', 0x03, 0x04, 0,0,0,0,0,0,0,0,0,0,0,0}, 4, 0}); // ZIP
+    signatures_.push_back(FileSignature{{'R', 'a', 'r', '!', 0,0,0,0,0,0,0,0,0,0,0,0}, 4, 0}); // RAR
+    signatures_.push_back(FileSignature{{0x1F, 0x8B, 0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 2, 0}); // GZIP
+    signatures_.push_back(FileSignature{{'B', 'Z', 'h', 0,0,0,0,0,0,0,0,0,0,0,0}, 3, 0}); // BZIP2
+    signatures_.push_back(FileSignature{{0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C, 0,0,0,0,0,0,0,0}, 6, 0}); // 7z
+    signatures_.push_back(FileSignature{{0xFD, '7', 'z', 'X', 'Z', 0x00, 0,0,0,0,0,0,0,0}, 6, 0}); // XZ
     
     // Image/texture signatures
-    signatures_.push_back(FileType{{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}, 8, 0}); // PNG
-    signatures_.push_back(FileType{{0xFF, 0xD8, 0xFF}, 3, 0}); // JPEG
-    signatures_.push_back(FileType{{'B', 'M'}, 2, 0}); // BMP
-    signatures_.push_back(FileType{{'G', 'I', 'F', '8', '7', 'a'}, 6, 0}); // GIF87a
-    signatures_.push_back(FileType{{'G', 'I', 'F', '8', '9', 'a'}, 6, 0}); // GIF89a
-    signatures_.push_back(FileType{{'T', 'I', 'I', 'F'}, 4, 0}); // TIFF (big endian)
-    signatures_.push_back(FileType{{'I', 'I', '*', '\x00'}, 4, 0}); // TIFF (little endian)
-    signatures_.push_back(FileType{{'D', 'D', 'S', ' '}, 4, 0}); // DDS
-    signatures_.push_back(FileType{{0x89, 'K', 'T', 'X', ' ', '1', '1', 0x0B}, 8, 0}); // KTX
+    signatures_.push_back(FileSignature{{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0,0,0,0,0,0,0,0}, 8, 0}); // PNG
+    signatures_.push_back(FileSignature{{0xFF, 0xD8, 0xFF, 0,0,0,0,0,0,0,0,0,0,0,0,0}, 2, 0}); // JPEG
+    signatures_.push_back(FileSignature{{'B', 'M', 0,0,0,0,0,0,0,0,0,0,0,0,0,0}, 2, 0}); // BMP
+    signatures_.push_back(FileSignature{{'G', 'I', 'F', '8', '7', 'a', 0,0,0,0,0,0,0,0}, 6, 0}); // GIF87a
+    signatures_.push_back(FileSignature{{'G', 'I', 'F', '8', '9', 'a', 0,0,0,0,0,0,0,0}, 6, 0}); // GIF89a
+    signatures_.push_back(FileSignature{{'T', 'I', 'I', 'F', 0,0,0,0,0,0,0,0,0,0,0,0}, 4, 0}); // TIFF (big endian)
+    signatures_.push_back(FileSignature{{'I', 'I', '*', 0x00, 0,0,0,0,0,0,0,0,0,0,0,0}, 4, 0}); // TIFF (little endian)
+    signatures_.push_back(FileSignature{{'D', 'D', 'S', ' ', 0,0,0,0,0,0,0,0,0,0,0,0}, 4, 0}); // DDS
+    signatures_.push_back(FileSignature{{0x89, 'K', 'T', 'X', ' ', '1', '1', 0x0B, 0,0,0,0,0,0,0,0}, 8, 0}); // KTX
     
     // Audio signatures
-    signatures_.push_back(FileType{{'R', 'I', 'F', 'F', 0x00, 0x00, 0x00, 0x00, 'W', 'A', 'V', 'E'}, 12, 0}); // WAV
-    signatures_.push_back(FileType{{'O', 'g', 'g', 'S'}, 4, 0}); // OGG
-    signatures_.push_back(FileType{{'f', 'L', 'a', 'C'}, 4, 0}); // FLAC
-    signatures_.push_back(FileType{{'I', 'D', '3'}, 3, 0}); // ID3 tag (MP3)
-    signatures_.push_back(FileType{{0xFF, 0xFB}, 2, 0}); // MP3
-    signatures_.push_back(FileType{{0xFF, 0xF3}, 2, 0}); // MP3
-    signatures_.push_back(FileType{{0xFF, 0xF2}, 2, 0}); // MP3
+    signatures_.push_back(FileSignature{{'R', 'I', 'F', 'F', 0x00, 0x00, 0x00, 0x00, 'W', 'A', 'V', 'E', 0,0,0,0}, 12, 0}); // WAV
+    signatures_.push_back(FileSignature{{'O', 'g', 'g', 'S', 0,0,0,0,0,0,0,0,0,0,0}, 4, 0}); // OGG
+    signatures_.push_back(FileSignature{{'f', 'L', 'a', 'C', 0,0,0,0,0,0,0,0,0}, 4, 0}); // FLAC
+    signatures_.push_back(FileSignature{{'I', 'D', '3', 0,0,0,0,0,0,0,0,0}, 3, 0}); // ID3 tag (MP3)
+    signatures_.push_back(FileSignature{{0xFF, 0xFB, 0,0,0,0,0,0,0,0,0}, 2, 0}); // MP3
+    signatures_.push_back(FileSignature{{0xFF, 0xF3, 0,0,0,0,0,0,0,0,0}, 2, 0}); // MP3
+    signatures_.push_back(FileSignature{{0xFF, 0xF2, 0,0,0,0,0,0,0,0,0}, 2, 0}); // MP3
     
     // 3D model signatures
-    signatures_.push_back(FileType{{'f', 'b', 'x'}, 3, 0}); // FBX (binary)
-    signatures_.push_back(FileType{{"Kaydara FBX Binary  "}, 20, 0}); // FBX binary header
+    signatures_.push_back(FileSignature{{'f', 'b', 'x', 0,0,0,0,0,0,0,0,0,0}, 3, 0}); // FBX (binary)
+    // Note: FBX binary header is longer, but we're just checking for the start
     
     // Script signatures (shebangs)
-    signatures_.push_back(FileType{{'#', '!', '/', 'b', 'i', 'n', '/', 'b', 'a', 's', 'h'}, 10, 0});
-    signatures_.push_back(FileType{{'#', '!', '/', 'u', 's', 'r', '/', 'e', 'n', 'v', ' ', 'p', 'y', 't', 'h', 'o', 'n'}, 16, 0});
-    signatures_.push_back(FileType{{'#', '!', '/', 'b', 'i', 'n', '/', 's', 'h'}, 9, 0});
+    signatures_.push_back(FileSignature{{'#', '!', '/', 'b', 'i', 'n', '/', 'b', 'a', 's', 'h', 0,0,0,0}, 10, 0});
+    signatures_.push_back(FileSignature{{'#', '!', '/', 'u', 's', 'r', '/', 'e', 'n', 'v', ' ', 'p', 'y', 't', 'h', 'o'}, 16, 0}); // python (truncated)
+    signatures_.push_back(FileSignature{{'#', '!', '/', 'b', 'i', 'n', '/', 's', 'h', 0,0,0,0}, 9, 0});
     
     // Shader signatures
-    signatures_.push_back(FileType{{/* DXBC */ 0x44, 0x4B, 0x43, 0x42}, 4, 0});
-    signatures_.push_back(FileType{{/* SPIR-V */ 0x03, 0x02, 0x23, 0x07}, 4, 0});
+    signatures_.push_back(FileSignature{{/* DXBC */ 0x44, 0x4B, 0x43, 0x42, 0,0,0,0,0,0,0,0}, 4, 0});
+    signatures_.push_back(FileSignature{{/* SPIR-V */ 0x03, 0x02, 0x23, 0x07, 0,0,0,0,0,0,0,0}, 4, 0});
 }
 
 void FileTypeDetector::init_default_extensions() {
@@ -193,7 +194,7 @@ void FileTypeDetector::init_default_extensions() {
     // Archives
     register_extension(FileType::ZIP, ".zip");
     register_extension(FileType::RAR, ".rar");
-    register_extension(FileType::_7Z, ".7z");
+    register_extension(FileType::SEVENZ, ".7z");
     register_extension(FileType::TAR, ".tar");
     register_extension(FileType::GZ, ".gz");
     register_extension(FileType::BZ2, ".bz2");
@@ -251,7 +252,6 @@ void FileTypeDetector::init_default_extensions() {
     register_extension(FileType::FLV, ".flv");
     register_extension(FileType::WEBM, ".webm");
     register_extension(FileType::MPEG, ".mpeg");
-    register_extension(FileType::MPG, ".mpg");
     register_extension(FileType::BINK, ".bik");
     register_extension(FileType::BIK, ".bik");
     
@@ -283,24 +283,33 @@ Result<FileInfo> FileTypeDetector::detect(const Path& path) const {
         if (!fs::is_regular_file(path)) {
             info.is_symlink = fs::is_symlink(path);
             if (info.is_symlink) {
-                info.symlink_target = fs::read_symlink(path);
+                try {
+                    info.symlink_target = fs::read_symlink(path);
+                } catch (...) {
+                    // If we can't read the symlink target, just continue
+                }
             }
             return info; // Return basic info for directories/symlinks
         }
         
         info.size = fs::file_size(path);
-        info.modified_time = fs::last_write_time(path);
-        info.created_time = fs::last_write_time(path); // Approximation
+        auto ftime = fs::last_write_time(path);
+        // Convert file_time_type to system_clock::time_point
+        auto sctp = chrono::time_point_cast<chrono::system_clock::duration>(
+            ftime - fs::file_time_type::clock::now() + chrono::system_clock::now()
+        );
+        info.modified_time = sctp;
+        info.created_time = sctp; // Approximation
         
         // Get permissions
-        #ifdef _WIN32
+#ifdef _WIN32
         info.permissions = 0; // Simplified for Windows
-        #else
+#else
         struct stat st;
         if (stat(path.c_str(), &st) == 0) {
             info.permissions = st.st_mode & 0777;
         }
-        #endif
+#endif
         
         // Detect from extension first (fastest)
         auto ext_result = detect_from_extension(path);
@@ -316,10 +325,10 @@ Result<FileInfo> FileTypeDetector::detect(const Path& path) const {
         
         // Determine category from type
         info.category = categorize_type(info.type);
-        info.extension = fs::extension(path).string();
+        info.extension = path.extension().string();
         
         // Try to get MIME type
-        info.mime_type = get_mime_type(path).value_or("application/octet-stream");
+        info.mime_type = FileUtils::mime_type(path).value_or("application/octet-stream");
         
         return info;
     } catch (const std::exception& e) {
@@ -329,8 +338,10 @@ Result<FileInfo> FileTypeDetector::detect(const Path& path) const {
 }
 
 Result<FileType> FileTypeDetector::detect_from_extension(const Path& path) const {
-    String ext = StringUtils::to_lower(fs::extension(path).string());
+    std::string ext = path.extension().string();
     if (ext.empty()) return make_unexpected(MAKE_ERROR(ErrorCode::InvalidArgument, "No extension"));
+    
+    ext = StringUtils::to_lower(ext);
     
     auto it = extension_map_.find(ext);
     if (it != extension_map_.end()) {
@@ -362,7 +373,7 @@ Result<FileType> FileTypeDetector::detect_from_magic(const Path& path) const {
             std::format("Cannot open file: {}", path.string())));
     }
     
-    std::array<u8, 64> buffer{};
+    std::array<uint8_t, 64> buffer{};
     file.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
     std::streamsize bytes_read = file.gcount();
     
@@ -372,20 +383,52 @@ Result<FileType> FileTypeDetector::detect_from_magic(const Path& path) const {
     
     std::shared_lock<std::shared_mutex> lock(mutex_);
     for (const auto& sig : signatures_) {
-        if (bytes_read < sig.offset + sig.mask_length) continue;
+        if (bytes_read < static_cast<std::streamsize>(sig.offset + sig.mask_length)) continue;
         
         bool match = true;
-        for (u8 i = 0; i < sig.mask_length; ++i) {
-            if ((buffer[sig.offset + i] & 0xFF) != (sig.bytes[i] & 0xFF)) {
+        for (uint8_t i = 0; i < sig.mask_length; ++i) {
+            if ((buffer[static_cast<std::size_t>(sig.offset) + i] & 0xFF) != (sig.bytes[i] & 0xFF)) {
                 match = false;
                 break;
             }
         }
         
         if (match) {
-            return sig.mask_length > 0 ? std::make_optional(FileType::Unknown) : std::make_optional(sig.type);
-            // Note: In a real implementation, we'd need to map signatures to types
-            // This is simplified - we'd need a signature->type mapping
+            // In a real implementation, we would have a mapping from signatures to types
+            // For now, we'll return Unknown for signatures with mask_length > 0
+            // and try to infer the type from the signature for those with mask_length == 0
+            if (sig.mask_length == 0) {
+                // This is a simplified approach - in reality we'd need a proper mapping
+                // For demonstration purposes, we'll hardcode a few known signatures
+                if (sig.bytes[0] == 0x7F && sig.bytes[1] == 'E' && sig.bytes[2] == 'L' && sig.bytes[3] == 'F') {
+                    return FileType::ELF64; // or ELF32 depending on context
+                }
+                if (sig.bytes[0] == 'M' && sig.bytes[1] == 'Z') {
+                    return FileType::PE32; // or PE64 depending on context
+                }
+                if (sig.bytes[0] == 0x89 && sig.bytes[1] == 'P' && sig.bytes[2] == 'N' && sig.bytes[3] == 'G') {
+                    return FileType::PNG;
+                }
+                if (sig.bytes[0] == 0xFF && sig.bytes[1] == 0xD8 && sig.bytes[2] == 0xFF) {
+                    return FileType::JPG;
+                }
+                if (sig.bytes[0] == 'B' && sig.bytes[1] == 'M') {
+                    return FileType::BMP;
+                }
+                if (sig.bytes[0] == 0x1F && sig.bytes[1] == 0x8B) {
+                    return FileType::GZ;
+                }
+                if (sig.bytes[0] == 'B' && sig.bytes[1] == 'Z' && sig.bytes[2] == 'h') {
+                    return FileType::BZ2;
+                }
+                if (sig.bytes[0] == 'P' && sig.bytes[1] == 'K' && 
+                    sig.bytes[2] == 0x03 && sig.bytes[3] == 0x04) {
+                    return FileType::ZIP;
+                }
+                // Add more known signatures as needed
+            }
+            // For signatures with mask_length > 0, we return Unknown since we don't have a mapping
+            return make_unexpected(MAKE_ERROR(ErrorCode::UnsupportedFormat, "Signature matched but type not determined"));
         }
     }
     
@@ -452,15 +495,15 @@ void FileTypeDetector::register_extension(FileType type, StringView ext) {
 
 void FileTypeDetector::register_mime(FileType type, StringView mime) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
-    mime_map_[String(mime)] = type;
+    mime_map_[std::string(mime)] = type;
 }
 
-const std::unordered_map<String, FileType>& FileTypeDetector::extension_map() const {
+const std::unordered_map<std::string, FileType>& FileTypeDetector::extension_map() const {
     std::shared_lock<std::shared_mutex> lock(mutex_);
     return extension_map_;
 }
 
-const std::unordered_map<String, FileType>& FileTypeDetector::mime_map() const {
+const std::unordered_map<std::string, FileType>& FileTypeDetector::mime_map() const {
     std::shared_lock<std::shared_mutex> lock(mutex_);
     return mime_map_;
 }
@@ -478,12 +521,10 @@ FileCategory FileTypeDetector::categorize_type(FileType type) const {
         case FileType::ELF64:
         case FileType::MachO32:
         case FileType::MachO64:
-            return FileCategory::Executable;
-            
         case FileType::DLL:
         case FileType::SO:
         case FileType::DYLIB:
-            return FileCategory::Library;
+            return FileCategory::Executable;
             
         case FileType::DDS:
         case FileType::PNG:
@@ -593,7 +634,7 @@ FileCategory FileTypeDetector::categorize_type(FileType type) const {
             
         case FileType::ZIP:
         case FileType::RAR:
-        case FileType::_7Z:
+        case FileType::SEVENZ:
         case FileType::TAR:
         case FileType::GZ:
         case FileType::BZ2:
@@ -646,7 +687,6 @@ FileCategory FileTypeDetector::categorize_type(FileType type) const {
         case FileType::FLV:
         case FileType::WEBM:
         case FileType::MPEG:
-        case FileType::MPG:
         case FileType::BINK:
         case FileType::BIK:
             return FileCategory::Video;
@@ -656,196 +696,12 @@ FileCategory FileTypeDetector::categorize_type(FileType type) const {
         case FileType::RTF:
         case FileType::MD:
         case FileType::HTML:
+        case FileType::HTM:
         case FileType::CHM:
             return FileCategory::Document;
             
         default:
             return FileCategory::Unknown;
-    }
-}
-
-String FileInfo::category_name() const {
-    switch (category) {
-        case FileCategory::Executable: return "Executable";
-        case FileCategory::Library: return "Library";
-        case FileCategory::Texture: return "Texture";
-        case FileCategory::Model3D: return "3D Model";
-        case FileCategory::Audio: return "Audio";
-        case FileCategory::Script: return "Script";
-        case FileCategory::Shader: return "Shader";
-        case FileCategory::Particle: return "Particle";
-        case FileCategory::Physics: return "Physics";
-        case FileCategory::AI: return "AI";
-        case FileCategory::Network: return "Network";
-        case FileCategory::Config: return "Config";
-        case FileCategory::Archive: return "Archive";
-        case FileCategory::Database: return "Database";
-        case FileCategory::Font: return "Font";
-        case FileCategory::Video: return "Video";
-        case FileCategory::Document: return "Document";
-        case FileCategory::Unknown: return "Unknown";
-        default: return "Other";
-    }
-}
-
-String FileInfo::type_name() const {
-    // Simplified - in reality we'd have a mapping from FileType to string
-    switch (type) {
-        case FileType::PE32: return "PE32 Executable";
-        case FileType::PE64: return "PE64 Executable";
-        case FileType::ELF32: return "ELF32 Executable";
-        case FileType::ELF64: return "ELF64 Executable";
-        case FileType::MachO32: return "Mach-O 32 Executable";
-        case FileType::MachO64: return "Mach-O 64 Executable";
-        case FileType::DLL: return "Dynamic Link Library";
-        case FileType::SO: return "Shared Object";
-        case FileType::DYLIB: return "Dynamic Library";
-        case FileType::DDS: return "DirectDraw Surface";
-        case FileType::PNG: return "Portable Network Graphics";
-        case FileType::JPG: return "JPEG Image";
-        case FileType::TGA: return "Truevision TGA";
-        case FileType::BMP: return "Bitmap Image";
-        case FileType::TIFF: return "Tagged Image File Format";
-        case FileType::EXR: return "OpenEXR Image";
-        case FileType::HDR: return "High Dynamic Range Image";
-        case FileType::KTX: return "Khronos Texture";
-        case FileType::ASTC: return "Adaptive Scalable Texture Compression";
-        case FileType::PVR: return "PowerVR Texture";
-        case FileType::WebP: return "WebP Image";
-        case FileType::FBX: return "Autodesk FBX";
-        case FileType::OBJ: return "Wavefront OBJ";
-        case FileType::GLTF: return "GL Transmission Format";
-        case FileType::GLB: return "GLB Binary";
-        case FileType::COLLADA: return "COLLADA";
-        case FileType::USD: return "Universal Scene Description";
-        case FileType::USDZ: return "USDZ Archive";
-        case FileType::BLEND: return "Blender File";
-        case FileType::MAX: return "3ds Max File";
-        case FileType::MA: return "Maya ASCII";
-        case FileType::MB: return "Maya Binary";
-        case FileType::X: return "DirectX X File";
-        case FileType::MDL: return "Model File";
-        case FileType::NIF: return "NetImmerse/Gamebryo File";
-        case FileType::HKX: return "Havok File";
-        case FileType::GR2: return "Granny 2 File";
-        case FileType::SMD: return "Studio Model";
-        case FileType::DMX: return "Source Engine Model";
-        case FileType::WAV: return "Waveform Audio";
-        case FileType::OGG: return "Ogg Vorbis";
-        case FileType::MP3: return "MPEG Audio Layer III";
-        case FileType::FLAC: return "Free Lossless Audio Codec";
-        case FileType::AAC: return "Advanced Audio Coding";
-        case FileType::M4A: return "MPEG-4 Audio";
-        case FileType::WMA: return "Windows Media Audio";
-        case FileType::AIFF: return "Audio Interchange File Format";
-        case FileType::AU: return "Sun/NeXT Audio";
-        case FileType::RAW: return "Raw Audio";
-        case FileType::XMA: return "XMA Audio";
-        case FileType::ATRAC: return "ATRAC Audio";
-        case FileType::FSB: return "FMOD Sample Bank";
-        case FileType::BNK: return "Audio Bank";
-        case FileType::PKG: return "Audio Package";
-        case FileType::XWB: return "Xbox Wave Bank";
-        case FileType::XSB: return "Xbox Sound Bank";
-        case FileType::LUA: return "Lua Script";
-        case FileType::PY: return "Python Script";
-        case FileType::JS: return "JavaScript";
-        case FileType::TS: return "TypeScript";
-        case FileType::CS: return "C# Script";
-        case FileType::VB: return "Visual Basic";
-        case FileType::PL: return "Perl Script";
-        case FileType::SH: return "Shell Script";
-        case FileType::BAT: return "Batch File";
-        case FileType::PS1: return "PowerShell Script";
-        case FileType::ANGELSCRIPT: return "AngelScript";
-        case FileType::SQF: return "SQF Script";
-        case FileType::PAWN: return "Pawn Script";
-        case FileType::SCPT: return "Script";
-        case FileType::CSC: return "Compiled Script";
-        case FileType::CSCRIPT: return "Compiled Script";
-        case FileType::HLSL: return "High Level Shader Language";
-        case FileType::GLSL: return "OpenGL Shading Language";
-        case FileType::SPIRV: return "SPIR-V";
-        case FileType::CG: return "C for Graphics";
-        case FileType::CGINC: return "Cg Include";
-        case FileType::FX: return "Effect File";
-        case FileType::FXO: return "Compiled Effect";
-        case FileType::SHADER: return "Shader File";
-        case FileType::VSH: return "Vertex Shader";
-        case FileType::PSH: return "Pixel Shader";
-        case FileType::GSH: return "Geometry Shader";
-        case FileType::USH: return "Union Shader";
-        case FileType::USF: return "Union Shader Fragment";
-        case FileType::METAL: return "Metal Shading Language";
-        case FileType::MSL: return "Metal Shading Language";
-        case FileType::PFX: return "Particle Effect";
-        case FileType::PTX: return "Particle Texture";
-        case FileType::PAR: return "Particle Archive";
-        case FileType::PARTICLE: return "Particle File";
-        case FileType::EMITTER: return "Particle Emitter";
-        case FileType::PHYSX: return "PhysX File";
-        case FileType::HAVOK: return "Havok Physics";
-        case FileType::BULLET: return "Bullet Physics";
-        case FileType::ODE: return "Open Dynamics Engine";
-        case FileType::NEWTON: return "Newton Physics";
-        case FileType::PHYSX3: return "PhysX 3";
-        case FileType::ZIP: return "ZIP Archive";
-        case FileType::RAR: return "RAR Archive";
-        case FileType::_7Z: return "7-Zip Archive";
-        case FileType::TAR: return "TAR Archive";
-        case FileType::GZ: return "GZIP Archive";
-        case FileType::BZ2: return "BZIP2 Archive";
-        case FileType::XZ: return "XZ Archive";
-        case FileType::ZST: return "Zstandard Archive";
-        case FileType::PAK: return "PAK Archive";
-        case FileType::PK3: return "Quake 3 Package";
-        case FileType::PK4: return "Quake 4 Package";
-        case FileType::VPK: return "Valve Package";
-        case FileType::BSA: return "Bethesda Softworks Archive";
-        case FileType::BA2: return "Bethesda Archive 2";
-        case FileType::DAT: return "Data File";
-        case FileType::IDX: return "Index File";
-        case FileType::TOC: return "Table of Contents";
-        case FileType::WAD: return "Where's All the Data?";
-        case FileType::MPQ: return "Mo'PaQ Archive";
-        case FileType::CASC: return "Blizzard CASC";
-        case FileType::FORGE: return "Minecraft Forge";
-        case FileType::BIG: return "BIG Archive";
-        case FileType::SQLITE: return "SQLite Database";
-        case FileType::LEVELDB: return "LevelDB Database";
-        case FileType::ROCKSDB: return "RocksDB Database";
-        case FileType::LMDB: return "Lightning Memory-Mapped Database";
-        case FileType::BERKELEYDB: return "Berkeley DB";
-        case FileType::INI: return "INI Configuration";
-        case FileType::XML: return "XML File";
-        case FileType::JSON: return "JSON File";
-        case FileType::YAML: return "YAML File";
-        case FileType::TOML: return "TOML File";
-        case FileType::PROPERTIES: return "Properties File";
-        case FileType::TTF: return "TrueType Font";
-        case FileType::OTF: return "OpenType Font";
-        case FileType::WOFF: return "Web Open Font Format";
-        case FileType::WOFF2: return "Web Open Font Format 2";
-        case FileType::FNT: return "Font File";
-        case FileType::BMFONT: return "Bitmap Font";
-        case FileType::MP4: return "MPEG-4 Video";
-        case FileType::AVI: return "Audio Video Interleave";
-        case FileType::MKV: return "Matroska Video";
-        case FileType::MOV: return "QuickTime Movie";
-        case FileType::WMV: return "Windows Media Video";
-        case FileType::FLV: return "Flash Video";
-        case FileType::WEBM: return "WebM Video";
-        case FileType::MPEG: return "MPEG Video";
-        case FileType::MPG: return "MPEG Video";
-        case FileType::BINK: return "Bink Video";
-        case FileType::BIK: return "Bink Video";
-        case FileType::PDF: return "PDF Document";
-        case FileType::TXT: return "Text File";
-        case FileType::RTF: return "Rich Text Format";
-        case FileType::MD: return "Markdown Document";
-        case FileType::HTML: return "HTML Document";
-        case FileType::CHM: return "Compiled HTML Help";
-        default: return "Unknown Type";
     }
 }
 

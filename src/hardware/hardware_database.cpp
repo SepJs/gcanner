@@ -156,7 +156,7 @@ Result<void> HardwareDatabase::save_to_cache() const {
         ram_obj["voltage"] = ram.voltage;
         ram_obj["channels"] = ram.channels;
         ram_obj["ecc"] = ram.ecc;
-        ram_obj["registered"] = register.registered;
+        ram_obj["registered"] = ram.registered;
         ram_obj["form_factor"] = ram.form_factor;
         ram_obj["release_year"] = ram.release_year;
         ram_obj["price_usd"] = ram.price_usd;

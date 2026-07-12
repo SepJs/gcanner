@@ -310,6 +310,9 @@ public:
         if (!has_value_) throw std::runtime_error("Expected has no value");
     }
     
+    template<typename U>
+    void value_or(U&&) const {}
+    
     [[nodiscard]] E& error() & {
         if (has_value_) throw std::runtime_error("Expected has value");
         return error_;

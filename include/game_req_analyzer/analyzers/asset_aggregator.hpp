@@ -1,6 +1,5 @@
 #pragma once
 #include <game_req_analyzer/core/error.hpp>
-#include <game_req_analyzer/core/error.hpp>
 
 #include <game_req_analyzer/core/pch.hpp>
 #include <game_req_analyzer/core/error.hpp>
@@ -9,6 +8,11 @@
 #include <game_req_analyzer/analyzers/audio_analyzer.hpp>
 #include <game_req_analyzer/analyzers/script_analyzer.hpp>
 #include <game_req_analyzer/analyzers/executable_analyzer.hpp>
+#include <game_req_analyzer/analyzers/shader_analyzer.hpp>
+#include <game_req_analyzer/analyzers/particle_analyzer.hpp>
+#include <game_req_analyzer/analyzers/physics_analyzer.hpp>
+#include <game_req_analyzer/analyzers/ai_analyzer.hpp>
+#include <game_req_analyzer/analyzers/network_analyzer.hpp>
 
 namespace game_req {
 
@@ -18,6 +22,11 @@ struct AggregatedAssets {
     AudioStats audio;
     ScriptStats scripts;
     ExecutableStats executables;
+    ShaderStats shaders;
+    ParticleStats particles;
+    PhysicsStats physics;
+    AIStats ai;
+    NetworkStats network;
     
     u64 total_disk_size = 0;
     u64 total_vram = 0;
@@ -29,12 +38,18 @@ struct AggregatedAssets {
     f32 audio_to_total_ratio = 0.0f;
     f32 script_to_total_ratio = 0.0f;
     f32 executable_to_total_ratio = 0.0f;
+    f32 shader_to_total_ratio = 0.0f;
+    f32 particle_to_total_ratio = 0.0f;
+    f32 physics_to_total_ratio = 0.0f;
+    f32 ai_to_total_ratio = 0.0f;
+    f32 network_to_total_ratio = 0.0f;
     
     String primary_engine;
     String primary_renderer;
     String primary_audio;
     String primary_physics;
     String primary_scripting;
+    String primary_shader_lang;
     
     [[nodiscard]] String summary() const;
 };
@@ -48,7 +63,12 @@ public:
         const ModelStats& mdl,
         const AudioStats& aud,
         const ScriptStats& scr,
-        const ExecutableStats& exe
+        const ExecutableStats& exe,
+        const ShaderStats& shd,
+        const ParticleStats& par,
+        const PhysicsStats& phy,
+        const AIStats& ai,
+        const NetworkStats& net
     );
     
     [[nodiscard]] AggregatedAssets stats() const { return aggregated_; }

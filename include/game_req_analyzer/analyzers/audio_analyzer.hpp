@@ -55,7 +55,7 @@ public:
 private:
     AnalyzerConfig config_;
     AudioStats stats_;
-    std::mutex stats_mutex_;
+    mutable std::mutex stats_mutex_;
     
     Result<AudioInfo> analyze_wav(const Path& path);
     Result<AudioInfo> analyze_ogg(const Path& path);
@@ -65,6 +65,11 @@ private:
     Result<AudioInfo> analyze_adpcm(const Path& path);
     Result<AudioInfo> analyze_xma(const Path& path);
     Result<AudioInfo> analyze_atrac(const Path& path);
+    Result<AudioInfo> analyze_aac(const Path& path);
+    Result<AudioInfo> analyze_aiff(const Path& path);
+    Result<AudioInfo> analyze_fsb(const Path& path);
+    Result<AudioInfo> analyze_bnk(const Path& path);
+    Result<AudioInfo> analyze_xact(const Path& path);
     Result<AudioInfo> analyze_generic(const Path& path, FileType type);
     
     u64 estimate_ram_usage(const AudioInfo& audio) const;

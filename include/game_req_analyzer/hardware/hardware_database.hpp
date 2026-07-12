@@ -204,6 +204,7 @@ private:
     Result<void> load_ram_database();
     Result<void> load_storage_database();
     Result<void> download_and_parse(const String& url, String& output);
+    void load_default_data();
     void build_indices();
 };
 

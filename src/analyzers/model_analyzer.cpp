@@ -9,13 +9,13 @@
 #include <cstring>
 #include <limits>
 
-using namespace game_req;
+namespace game_req {
 
 ModelAnalyzer::ModelAnalyzer(const AnalyzerConfig& config) : config_(config) {
     // Initialize any necessary data structures
 }
 
-std::vector<ModelInfo> ModelAnalyzer::analyze(const std::vector<FileInfo>& models) {
+Result<std::vector<ModelInfo>> ModelAnalyzer::analyze(const std::vector<FileInfo>& models) {
     std::vector<ModelInfo> results;
     results.reserve(models.size());
     
@@ -78,7 +78,7 @@ std::vector<ModelInfo> ModelAnalyzer::analyze(const std::vector<FileInfo>& model
     return results;
 }
 
-ModelInfo ModelAnalyzer::analyze_single(const FileInfo& model) {
+Result<ModelInfo> ModelAnalyzer::analyze_single(const FileInfo& model) {
     ModelInfo info;
     info.disk_size = model.size;
     
@@ -138,7 +138,7 @@ ModelInfo ModelAnalyzer::analyze_single(const FileInfo& model) {
 }
 
 // Implementation of specific format analyzers - simplified for demonstration
-ModelInfo ModelAnalyzer::analyze_fbx(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_fbx(const Path& path) {
     ModelInfo info;
     
     // FBX is complex - this is a simplified implementation
@@ -149,8 +149,7 @@ ModelInfo ModelAnalyzer::analyze_fbx(const Path& path) {
     // Check if it's binary or ASCII FBX by looking for magic bytes
     std::ifstream file(path, std::ios::binary);
     if (!file) {
-        info.error_message = "Cannot open file";
-        return info;
+        return make_unexpected(MAKE_ERROR(ErrorCode::IoError, "Cannot open file"));
     }
     
     // Check for binary FBX header
@@ -228,13 +227,12 @@ ModelInfo ModelAnalyzer::analyze_fbx(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_obj(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_obj(const Path& path) {
     ModelInfo info;
     
     std::ifstream file(path);
     if (!file) {
-        info.error_message = "Cannot open file";
-        return info;
+        return make_unexpected(MAKE_ERROR(ErrorCode::IoError, "Cannot open file"));
     }
     
     info.format = "OBJ";
@@ -322,14 +320,14 @@ ModelInfo ModelAnalyzer::analyze_obj(const Path& path) {
     info.lod_count = 1;
     
     // Estimate VRAM usage
-    info.estimated_vram = estimate_vram = estimate_vram(info);
+    info.estimated_vram = estimate_vram(info);
     
     info.disk_size = fs::file_size(path);
     
-    return info;
+return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_gltf(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_gltf(const Path& path) {
     ModelInfo info;
     info.format = "GLTF";
     
@@ -338,8 +336,7 @@ ModelInfo ModelAnalyzer::analyze_gltf(const Path& path) {
         std::string content = StringUtils::read_text_file(path).value_or("");
         
         if (content.empty()) {
-            info.error_message = "Empty GLTF file";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Empty GLTF file"));
         }
         
         // Basic attribute counting (simplified)
@@ -372,7 +369,8 @@ ModelInfo ModelAnalyzer::analyze_gltf(const Path& path) {
         }
         
     } catch (const std::exception& e) {
-        info.error_message = std::string("GLTF parsing failed: ") + e.what();
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("GLTF parsing failed: ") + e.what()));
     }
     
     info.disk_size = fs::file_size(path);
@@ -381,15 +379,14 @@ ModelInfo ModelAnalyzer::analyze_gltf(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_glb(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_glb(const Path& path) {
     ModelInfo info;
     info.format = "GLB";
     
     // GLB is binary GLTF - we'll do a basic parse
     std::ifstream file(path, std::ios::binary);
     if (!file) {
-        info.error_message = "Cannot open GLB file";
-        return info;
+        return make_unexpected(MAKE_ERROR(ErrorCode::IoError, "Cannot open GLB file"));
     }
     
     // Read header
@@ -399,8 +396,7 @@ ModelInfo ModelAnalyzer::analyze_glb(const Path& path) {
     file.read(reinterpret_cast<char*>(&length), 4);
     
     if (magic != 0x46546C67) { // 'glTF' in little endian
-        info.error_message = "Invalid GLB magic number";
-        return info;
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Invalid GLB magic number"));
     }
     
     // Skip to JSON chunk
@@ -443,7 +439,7 @@ ModelInfo ModelAnalyzer::analyze_glb(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_collada(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_collada(const Path& path) {
     ModelInfo info;
     info.format = "COLLADA";
     
@@ -451,8 +447,7 @@ ModelInfo ModelAnalyzer::analyze_collada(const Path& path) {
         std::string content = StringUtils::read_text_file(path).value_or("");
         
         if (content.empty()) {
-            info.error_message = "Empty COLLADA file";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Empty COLLADA file"));
         }
         
         // Count vertices by looking for <float_array> or <Source> with position data
@@ -517,7 +512,8 @@ ModelInfo ModelAnalyzer::analyze_collada(const Path& path) {
         }
         
     } catch (const std::exception& e) {
-        info.error_message = std::string("COLLADA parsing failed: ") + e.what();
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("COLLADA parsing failed: ") + e.what()));
     }
     
     info.disk_size = fs::file_size(path);
@@ -526,7 +522,7 @@ ModelInfo ModelAnalyzer::analyze_collada(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_usd(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_usd(const Path& path) {
     ModelInfo info;
     info.format = "USD";
     
@@ -541,8 +537,7 @@ ModelInfo ModelAnalyzer::analyze_usd(const Path& path) {
         std::string content = StringUtils::read_text_file(path).value_or("");
         
         if (content.empty()) {
-            info.error_message = "Empty USD file";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Empty USD file"));
         }
         
         // Count prims (basic objects in USD)
@@ -602,7 +597,8 @@ ModelInfo ModelAnalyzer::analyze_usd(const Path& path) {
         }
         
     } catch (const std::exception& e) {
-        info.error_message = std::string("USD parsing failed: ") + e.what();
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("USD parsing failed: ") + e.what()));
     }
     
     info.disk_size = fs::file_size(path);
@@ -611,21 +607,20 @@ ModelInfo ModelAnalyzer::analyze_usd(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_usdz(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_usdz(const Path& path) {
     // USDZ is a ZIP archive containing USD files
     // For now, we'll treat it as a generic file and extract basic info
     return analyze_generic(path, FileType::USDZ);
 }
 
-ModelInfo ModelAnalyzer::analyze_blend(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_blend(const Path& path) {
     ModelInfo info;
     info.format = "BLEND";
     
     // Blender file is binary - we'll read basic header info
     std::ifstream file(path, std::ios::binary);
     if (!file) {
-        info.error_message = "Cannot open Blender file";
-        return info;
+        return make_unexpected(MAKE_ERROR(ErrorCode::IoError, "Cannot open Blender file"));
     }
     
     // Read Blender header (first 12 bytes)
@@ -633,8 +628,7 @@ ModelInfo ModelAnalyzer::analyze_blend(const Path& path) {
     file.read(header, 12);
     
     if (std::memcmp(header, "BLENDER", 7) != 0) {
-        info.error_message = "Invalid Blender file header";
-        return info;
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Invalid Blender file header"));
     }
     
     // Version is in bytes 7-10
@@ -650,7 +644,11 @@ ModelInfo ModelAnalyzer::analyze_blend(const Path& path) {
     // Blender files have a specific structure with DNA1/RNA1 sections
     
     // Search for mesh data blocks
-    std::vector<char> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    std::vector<char> buffer;
+    file.seekg(0, std::ios::end);
+    buffer.resize(file.tellg());
+    file.seekg(0, std::ios::beg);
+    file.read(buffer.data(), buffer.size());
     std::string file_data(buffer.begin(), buffer.end());
     
     // Look for "Mesh" identifiers
@@ -679,7 +677,7 @@ ModelInfo ModelAnalyzer::analyze_blend(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_max(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_max(const Path& path) {
     ModelInfo info;
     info.format = "3DS MAX";
     
@@ -690,8 +688,7 @@ ModelInfo ModelAnalyzer::analyze_max(const Path& path) {
         // Old 3DS format
         std::ifstream file(path, std::ios::binary);
         if (!file) {
-            info.error_message = "Cannot open 3DS file";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::IoError, "Cannot open 3DS file"));
         }
         
         // Read main chunk
@@ -701,6 +698,8 @@ ModelInfo ModelAnalyzer::analyze_max(const Path& path) {
         while (file.peek() != EOF) {
             file.read(reinterpret_cast<char*>(&chunk_id), 2);
             file.read(reinterpret_cast<char*>(&chunk_length), 4);
+            
+            if (file.eof()) break;
             
             if (chunk_id == 0x4D4D) { // MAIN3DS chunk
                 // Continue reading sub-chunks
@@ -716,6 +715,7 @@ ModelInfo ModelAnalyzer::analyze_max(const Path& path) {
                 // Read number of vertices
                 uint16_t num_vertices;
                 file.read(reinterpret_cast<char*>(&num_vertices), 2);
+                if (file.eof()) break;
                 info.vertex_count += num_vertices;
                 
                 // Skip vertex coordinates (3 floats each)
@@ -724,6 +724,7 @@ ModelInfo ModelAnalyzer::analyze_max(const Path& path) {
                 // Read number of faces
                 uint16_t num_faces;
                 file.read(reinterpret_cast<char*>(&num_faces), 2);
+                if (file.eof()) break;
                 info.triangle_count += num_faces;
                 
                 // Skip face data (each face has 5 values: A,B,C,flags,material)
@@ -736,11 +737,11 @@ ModelInfo ModelAnalyzer::analyze_max(const Path& path) {
     } else {
         // .max file - treat as complex binary
         // For now, estimate based on file size
-        info.vertex_count = std::min(fs::file_size(path) / 50, 1000000UL);
+        info.vertex_count = std::min<u64>(fs::file_size(path) / 50, 1000000);
         if (info.vertex_count > 0) {
-            info.triangle_count = std::min(vertex_count / 3, 500000UL);
+            info.triangle_count = std::min<u64>(info.vertex_count / 3, 500000);
         }
-        info.mesh_count = std::max(1UL, fs::file_size(path) / (1024 * 1024)); // Rough: 1 mesh per MB
+        info.mesh_count = std::max<u64>(1, fs::file_size(path) / (1024 * 1024)); // Rough: 1 mesh per MB
     }
     
     info.engine_hint = "3DS Max";
@@ -751,7 +752,7 @@ ModelInfo ModelAnalyzer::analyze_max(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_ma(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_ma(const Path& path) {
     ModelInfo info;
     info.format = "MAYA ASCII";
     
@@ -760,8 +761,7 @@ ModelInfo ModelAnalyzer::analyze_ma(const Path& path) {
         std::string content = StringUtils::read_text_file(path).value_or("");
         
         if (content.empty()) {
-            info.error_message = "Empty Maya file";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Empty Maya file"));
         }
         
         // Count geometry shapes
@@ -772,6 +772,7 @@ ModelInfo ModelAnalyzer::analyze_ma(const Path& path) {
         }
         
         // Count vertices by looking for point array declarations
+        pos = 0;
         pos = 0;
         while ((pos = content.find(".p[", pos)) != std::string::npos) {
             // Found a point array, now find the size
@@ -832,7 +833,8 @@ ModelInfo ModelAnalyzer::analyze_ma(const Path& path) {
         }
         
     } catch (const std::exception& e) {
-        info.error_message = std::string("Maya ASCII parsing failed: ") + e.what();
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("Maya ASCII parsing failed: ") + e.what()));
     }
     
     info.disk_size = fs::file_size(path);
@@ -841,7 +843,7 @@ ModelInfo ModelAnalyzer::analyze_ma(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_mb(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_mb(const Path& path) {
     ModelInfo info;
     info.format = "MAYA BINARY";
     
@@ -849,17 +851,15 @@ ModelInfo ModelAnalyzer::analyze_mb(const Path& path) {
     try {
         std::ifstream file(path, std::ios::binary);
         if (!file) {
-            info.error_message = "Cannot open Maya binary file";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::IoError, "Cannot open Maya binary file"));
         }
         
         // Read header
         char magic[4];
         file.read(magic, 4);
         
-        if (std::memcmp(mask, "FFEE", 4) != 0 && std::memcmp(mask, "EEFF", 4) != 0) {
-            info.error_message = "Invalid Maya binary file header";
-            return info;
+        if (std::memcmp(magic, "FFEE", 4) != 0 && std::memcmp(magic, "EEFF", 4) != 0) {
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Invalid Maya binary file header"));
         }
         
         // For now, estimate based on file size
@@ -875,7 +875,8 @@ ModelInfo ModelAnalyzer::analyze_mb(const Path& path) {
         info.material_count = std::max(1UL, file_size / (10 * 1024 * 1024)); // Rough: 1 material per 10MB
         
     } catch (const std::exception& e) {
-        info.error_message = std::string("Maya binary parsing failed: ") + e.what();
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("Maya binary parsing failed: ") + e.what()));
     }
     
     info.engine_hint = "Maya";
@@ -885,7 +886,7 @@ ModelInfo ModelAnalyzer::analyze_mb(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_x(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_x(const Path& path) {
     ModelInfo info;
     info.format = "DIRECTX X";
     
@@ -894,14 +895,12 @@ ModelInfo ModelAnalyzer::analyze_x(const Path& path) {
         std::string content = StringUtils::read_text_file(path).value_or("");
         
         if (content.empty()) {
-            info.error_message = "Empty DirectX X file";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Empty DirectX X file"));
         }
         
         // Check for xof header
         if (content.find("xof ") != 0 && !content.starts_with("xof ")) {
-            info.error_message = "Invalid DirectX X file header";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Invalid DirectX X file header"));
         }
         
         // Count meshes by looking for Mesh templates
@@ -987,7 +986,8 @@ ModelInfo ModelAnalyzer::analyze_x(const Path& path) {
         }
         
     } catch (const std::exception& e) {
-        info.error_message = std::string("DirectX X parsing failed: ") + e.what();
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("DirectX X parsing failed: ") + e.what()));
     }
     
     info.disk_size = fs::file_size(path);
@@ -996,7 +996,7 @@ ModelInfo ModelAnalyzer::analyze_x(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_mdl(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_mdl(const Path& path) {
     ModelInfo info;
     info.format = "STUDIO MDL";
     
@@ -1004,8 +1004,7 @@ ModelInfo ModelAnalyzer::analyze_mdl(const Path& path) {
     try {
         std::ifstream file(path, std::ios::binary);
         if (!file) {
-            info.error_message = "Cannot open MDL file";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::IoError, "Cannot open MDL file"));
         }
         
         // Read IDST header
@@ -1016,8 +1015,7 @@ ModelInfo ModelAnalyzer::analyze_mdl(const Path& path) {
             // Try little-endian version
             char idst2[4] = {'I', 'D', 'S', 'T'};
             if (std::memcmp(idst, idst2, 4) != 0) {
-                info.error_message = "Invalid MDL file header";
-                return info;
+                return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Invalid MDL file header"));
             }
         }
         
@@ -1053,13 +1051,18 @@ ModelInfo ModelAnalyzer::analyze_mdl(const Path& path) {
         }
         
     } catch (const std::exception& e) {
-        info.error_message = std::string("MDL parsing failed: ") + e.what();
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("MDL parsing failed: ") + e.what()));
     }
     
     // Try to detect engine from file content
     std::ifstream file(path, std::ios::binary);
     if (file) {
-        std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        std::string content;
+        file.seekg(0, std::ios::end);
+        content.reserve(file.tellg());
+        file.seekg(0, std::ios::beg);
+        content.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
         if (content.find("Valve") != std::string::npos || 
             content.find("Half-Life") != std::string::npos ||
             content.find("Counter-Strike") != std::string::npos ||
@@ -1076,7 +1079,265 @@ ModelInfo ModelAnalyzer::analyze_mdl(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_nif(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_md2(const Path& path) {
+    ModelInfo info;
+    info.format = "MD2 (Quake 2)";
+    
+    // MD2 files are binary
+    try {
+        std::ifstream file(path, std::ios::binary);
+        if (!file) {
+            return make_unexpected(MAKE_ERROR(ErrorCode::IoError, "Cannot open MD2 file"));
+        }
+        
+        // Read MD2 header
+        struct MD2Header {
+            int32_t ident;      // "IDP2"
+            int32_t version;    // 8
+            int32_t skinwidth;
+            int32_t skinheight;
+            int32_t framesize;
+            int32_t num_skins;
+            int32_t num_vertices;
+            int32_t num_st;
+            int32_t num_tris;
+            int32_t num_glcmds;
+            int32_t num_frames;
+            int32_t offset_skins;
+            int32_t offset_st;
+            int32_t offset_tris;
+            int32_t offset_frames;
+            int32_t offset_glcmds;
+            int32_t offset_end;
+        } header;
+        
+        file.read(reinterpret_cast<char*>(&header), sizeof(header));
+        
+        if (header.ident != 844121161) { // "IDP2"
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Invalid MD2 file header"));
+        }
+        
+        if (header.version != 8) {
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Unsupported MD2 version"));
+        }
+        
+        info.vertex_count = static_cast<u64>(header.num_vertices);
+        info.triangle_count = static_cast<u64>(header.num_tris);
+        info.mesh_count = 1; // MD2 typically has one model
+        
+        // Estimate UV coordinates and normals
+        info.texcoord_count = static_cast<u64>(header.num_st);
+        info.normal_count = static_cast<u64>(header.num_vertices * header.num_frames); // Per-frame normals
+        info.face_count = static_cast<u64>(header.num_tris);
+        
+    } catch (const std::exception& e) {
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("MD2 parsing failed: ") + e.what()));
+    }
+    
+    info.disk_size = fs::file_size(path);
+    info.estimated_vram = estimate_vram(info);
+    
+    return info;
+}
+
+Result<ModelInfo> ModelAnalyzer::analyze_md3(const Path& path) {
+    ModelInfo info;
+    info.format = "MD3 (Quake 3)";
+    
+    // MD3 files are binary
+    try {
+        std::ifstream file(path, std::ios::binary);
+        if (!file) {
+            return make_unexpected(MAKE_ERROR(ErrorCode::IoError, "Cannot open MD3 file"));
+        }
+        
+        // Read MD3 header
+        struct MD3Header {
+            int32_t ident;      // "IDP3"
+            int32_t version;    // 15
+            char name[64];
+            int32_t flags;
+            int32_t num_frames;
+            int32_t num_tags;
+            int32_t num_meshes;
+            int32_t num_maxskins;
+            int32_t header_size;
+            int32_t tag_start;
+            int32_t tag_end;
+            int32_t file_size;
+        } header;
+        
+        file.read(reinterpret_cast<char*>(&header), sizeof(header));
+        
+        if (header.ident != 860898377) { // "IDP3"
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Invalid MD3 file header"));
+        }
+        
+        if (header.version != 15) {
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Unsupported MD3 version"));
+        }
+        
+        info.mesh_count = static_cast<u64>(header.num_meshes);
+        
+        // For MD3, we'd need to parse each mesh header to get vertex/triangle counts
+        // For now, estimate based on file size
+        u64 file_size = fs::file_size(path);
+        if (file_size > 0) {
+            info.vertex_count = std::min<u64>(file_size / 20, 100000);
+            info.triangle_count = std::min<u64>(file_size / 15, 50000);
+            info.normal_count = info.vertex_count;
+            info.texcoord_count = info.vertex_count;
+            info.face_count = info.triangle_count;
+        }
+        
+    } catch (const std::exception& e) {
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("MD3 parsing failed: ") + e.what()));
+    }
+    
+    info.disk_size = fs::file_size(path);
+    info.estimated_vram = estimate_vram(info);
+    
+    return info;
+}
+
+Result<ModelInfo> ModelAnalyzer::analyze_md5(const Path& path) {
+    ModelInfo info;
+    info.format = "MD5 (Doom 3)";
+    
+    // MD5 files are text-based (MD5Mesh, MD5Anim)
+    try {
+        std::string content = StringUtils::read_text_file(path).value_or("");
+        
+        if (content.empty()) {
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Empty MD5 file"));
+        }
+        
+        // Check if it's MD5Mesh or MD5Anim
+        if (content.find("MD5Version") != std::string::npos) {
+            // MD5Mesh - parse mesh data
+            size_t pos = 0;
+            u64 mesh_count = 0;
+            u64 vertex_count = 0;
+            u64 triangle_count = 0;
+            
+            while ((pos = content.find("mesh {", pos)) != std::string::npos) {
+                mesh_count++;
+                size_t mesh_end = content.find("}", pos);
+                if (mesh_end != std::string::npos) {
+                    std::string mesh_content = content.substr(pos, mesh_end - pos);
+                    
+                    // Count verts
+                    size_t vpos = 0;
+                    while ((vpos = mesh_content.find("vert ", vpos)) != std::string::npos) {
+                        vertex_count++;
+                        vpos += 5;
+                    }
+                    
+                    // Count tris
+                    size_t tpos = 0;
+                    while ((tpos = mesh_content.find("tri ", tpos)) != std::string::npos) {
+                        triangle_count++;
+                        tpos += 4;
+                    }
+                }
+                pos += 6;
+            }
+            
+            info.mesh_count = mesh_count;
+            info.vertex_count = vertex_count;
+            info.triangle_count = triangle_count;
+            info.normal_count = vertex_count;
+            info.texcoord_count = vertex_count;
+            info.face_count = triangle_count;
+        }
+        
+    } catch (const std::exception& e) {
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("MD5 parsing failed: ") + e.what()));
+    }
+    
+    info.disk_size = fs::file_size(path);
+    info.estimated_vram = estimate_vram(info);
+    
+    return info;
+}
+
+Result<ModelInfo> ModelAnalyzer::analyze_dmx(const Path& path) {
+    ModelInfo info;
+    info.format = "DMX (Source 2)";
+    
+    // DMX files can be binary or text (KeyValues)
+    try {
+        std::string content = StringUtils::read_text_file(path).value_or("");
+        
+        if (content.empty()) {
+            // Try binary
+            std::ifstream file(path, std::ios::binary);
+            if (file) {
+                char header[8];
+                file.read(header, 8);
+                if (std::memcmp(header, "DMX", 3) == 0) {
+                    info.format = "DMX Binary";
+                    // Binary DMX - estimate from file size
+                    u64 file_size = fs::file_size(path);
+                    if (file_size > 0) {
+                        info.vertex_count = std::min<u64>(file_size / 30, 500000);
+                        info.triangle_count = std::min<u64>(file_size / 20, 300000);
+                        info.mesh_count = std::max<u64>(1, file_size / (5 * 1024 * 1024));
+                    }
+                    info.disk_size = file_size;
+                    info.estimated_vram = estimate_vram(info);
+                    return info;
+                }
+            }
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Empty or invalid DMX file"));
+        }
+        
+        // Text-based DMX (KeyValues format)
+        size_t pos = 0;
+        u64 mesh_count = 0;
+        u64 vertex_count = 0;
+        u64 triangle_count = 0;
+        
+        while ((pos = content.find("DmElement", pos)) != std::string::npos) {
+            size_t line_end = content.find('\n', pos);
+            if (line_end != std::string::npos) {
+                std::string line = content.substr(pos, line_end - pos);
+                if (line.find("mesh") != std::string::npos || line.find("model") != std::string::npos) {
+                    mesh_count++;
+                }
+            }
+            pos += 9;
+        }
+        
+        // Estimate from file size for text format
+        u64 file_size = content.size();
+        if (file_size > 0) {
+            vertex_count = std::min<u64>(file_size / 100, 200000);
+            triangle_count = std::min<u64>(file_size / 70, 100000);
+        }
+        
+        info.mesh_count = std::max<u64>(mesh_count, 1);
+        info.vertex_count = vertex_count;
+        info.triangle_count = triangle_count;
+        info.normal_count = vertex_count;
+        info.texcoord_count = vertex_count;
+        info.face_count = triangle_count;
+        
+    } catch (const std::exception& e) {
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("DMX parsing failed: ") + e.what()));
+    }
+    
+    info.disk_size = fs::file_size(path);
+    info.estimated_vram = estimate_vram(info);
+    
+    return info;
+}
+
+Result<ModelInfo> ModelAnalyzer::analyze_nif(const Path& path) {
     ModelInfo info;
     info.format = "NETIMMERSE/NIF";
     
@@ -1084,8 +1345,7 @@ ModelInfo ModelAnalyzer::analyze_nif(const Path& path) {
     try {
         std::ifstream file(path, std::ios::binary);
         if (!file) {
-            info.error_message = "Cannot open NIF file";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::IoError, "Cannot open NIF file"));
         }
         
         // Check header
@@ -1098,8 +1358,7 @@ ModelInfo ModelAnalyzer::analyze_nif(const Path& path) {
             char nif2[4] = {'F', 'F', 'I', 'N'};
             if (std::memcmp(header, nif1, 4) != 0 && 
                 std::memcmp(header, nif2, 4) != 0) {
-                info.error_message = "Invalid NIF file header";
-                return info;
+                return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Invalid NIF file header"));
             }
         }
         
@@ -1110,7 +1369,11 @@ ModelInfo ModelAnalyzer::analyze_nif(const Path& path) {
         // Skip to the rest of the header (version dependent)
         // For simplicity, we'll do a basic scan for NiTriShape and NiTriStrips
         
-        std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        std::string content;
+        file.seekg(0, std::ios::end);
+        content.reserve(file.tellg());
+        file.seekg(0, std::ios::beg);
+        content.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
         
         // Count NiTriShape and NiTriStrips (these contain geometry)
         size_t trishape_count = std::count(content.begin(), content.end(), 'N') / 10; // Rough
@@ -1161,7 +1424,8 @@ ModelInfo ModelAnalyzer::analyze_nif(const Path& path) {
         info.bone_count = bone_count;
         
     } catch (const std::exception& e) {
-        info.error_message = std::string("NIF parsing failed: ") + e.what();
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("NIF parsing failed: ") + e.what()));
     }
     
     info.disk_size = fs::file_size(path);
@@ -1170,62 +1434,7 @@ ModelInfo ModelAnalyzer::analyze_nif(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_hkx(const Path& path) {
-    ModelInfo info;
-    info.format = "HAVOK HKX";
-    
-    // Havok HKX files are binary
-    try {
-        std::ifstream file(path, std::ios::binary);
-        if (!file) {
-            info.error_message = "Cannot open HKX file";
-            return info;
-        }
-        
-        // Check for Havok signature
-        char signature[4];
-        file.read(signature, 4);
-        
-        if (std::memcmp(signature, "\x1E\x0D\x0D\x0A", 4) != 0) { // HKX signature
-            // Try alternative signatures
-            char alt_sig[4] = {'H', 'a', 'v', 'o'};
-            if (std::memcmp(signature, alt_sig, 4) != 0) {
-                info.error_message = "Invalid HKX file header";
-                return info;
-            }
-        }
-        
-        // Read version info (simplified)
-        uint16_t hx_version;
-        file.read(reinterpret_cast<char*>(&hx_version), 2);
-        
-        // For now, estimate based on file size
-        // HKX files contain animation data, collision data, etc.
-        uint64_t file_size = fs::file_size(path);
-        
-        // Rough estimates
-        // HKX files can be large due to animation data
-        if (info.disk_size > 1024) {
-            // Assume some portion is mesh data
-            size_t mesh_data_size = std::min(info.disk_size / 4, 10 * 1024 * 1024); // Max 10MB for mesh data
-            info.vertex_count = std::min(mesh_data_size / 50, 500000UL); // Rough estimate
-            if (info.vertex_count > 0) {
-                info.triangle_count = std::min(vertex_count / 3, 500000UL);
-            }
-            info.mesh_count = std::max(1UL, file_size / (5 * 1024 * 1024)); // Rough: 1 mesh per 5MB
-        }
-        
-    } catch (const std::exception& e) {
-        info.error_message = std::string("HKX parsing failed: ") + e.what();
-    }
-    
-    info.disk_size = fs::file_size(path);
-    info.estimated_vram = estimate_vram(info);
-    
-    return info;
-}
-
-ModelInfo ModelAnalyzer::analyze_gr2(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_gr2(const Path& path) {
     ModelInfo info;
     info.format = "GRANNY 2";
     
@@ -1233,8 +1442,7 @@ ModelInfo ModelAnalyzer::analyze_gr2(const Path& path) {
     try {
         std::ifstream file(path, std::ios::binary);
         if (!file) {
-            info.error_message = "Cannot open GR2 file";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::IoError, "Cannot open GR2 file"));
         }
         
         // Check for Granny signature
@@ -1242,465 +1450,7 @@ ModelInfo ModelAnalyzer::analyze_gr2(const Path& path) {
         file.read(signature, 8);
         
         if (std::memcmp(signature, "Granny 2", 8) != 0) {
-            info.error_message = "Invalid GR2 file header";
-            return info;
-        }
-        
-        // Read version
-        uint32_t version;
-        file.read(reinterpret_cast<char*>(&volume), 4);
-        
-        // For now, estimate based on file size
-        // Granny files contain meshes, skeletons, animations, textures, etc.
-        uint64_t file_size = fs::file_size(path);
-        
-        if (file_size > 1024) {
-            // Estimate mesh data portion
-            size_t mesh_data_size = std::min(file_size / 3, 20 * 1024 * 1024); // Max 20MB for mesh data
-            info.vertex_count = std::min(mesh_data_size / 30, 1000000UL); // Rough estimate
-            if (info.vertex_count > 0) {
-                info.triangle_count = std::min(vertex_count / 3, 500000UL);
-            }
-            info.mesh_count = std::max(1UL, file_size / (2 * 1024 * 1024)); // Rough: 1 mesh per 2MB
-            info.material_count = std::max(1UL, file_size / (5 * 1024 * 1024)); // Rough: 1 material per 5MB
-        }
-        
-    } catch (const std::exception& e) {
-        info.error_message = std::string("GR2 parsing failed: ") + e.what();
-    }
-    
-    info.disk_size = fs::file_size(path);
-    info.estimated_vram = estimate_vram(info);
-    
-    return info;
-}
-
-ModelInfo ModelAnalyzer::analyze_smd(const Path& path) {
-    ModelInfo info;
-    info.format = "STUDIO MODEL";
-    
-    // SMD files are text-based
-    try {
-        std::string content = StringUtils::read_text_file(path).value_or("");
-        
-        if (content.empty()) {
-            info.error_message = "Empty SMD file";
-            return info;
-        }
-        
-        // Count vertices by looking for vertex data
-        size_t pos = 0;
-        while ((pos = content.find("vertex ", pos)) != std::string::npos) {
-            // Found a vertex declaration
-            // Format: "vertex 0 0.000 0.000 0.000 0.000 0.000"
-            size_t end_line = content.find('\n', pos);
-            if (end_line != std::string::npos) {
-                std::string line = content.substr(pos, end_line - pos);
-                // Count this as one vertex
-                info.vertex_count++;
-            }
-            pos += 7; // Move past "vertex "
-        }
-        
-        // Count triangles by looking for triangle data
-        pos = 0;
-        while ((pos = content.find("triangle ", pos)) != std::string::nop) {
-            // Found a triangle definition
-            // Format: "triangle 0 0 1 2"
-            size_t end_line = content.find('\n', pos);
-            if (end_line != std::string::npos) {
-                // Count this as one triangle
-                info.triangle_count++;
-            }
-            pos += 9; // Move past "triangle "
-        }
-        
-        // Estimate mesh count (SMD files usually have one model per file)
-        info.mesh_count = 1;
-        
-        // Estimate materials (usually referenced in accompanying .vt files)
-        // For now, default to 1
-        info.material_count = 1;
-        
-        // SMD files are often used for skeletal animation
-        // Look for skeleton section
-        if (content.find("skeleton") != std::string::npos) {
-            // Count bones by looking for bone lines
-            size_t bone_pos = 0;
-            while ((bone_pos = content.find("bone ", bone_pos)) != std::string::npos) {
-                info.bone_count++;
-                bone_pos += 5; // Move past "bone "
-            }
-        }
-        
-    } catch (const std::exception& e) {
-        info.error_message = std::string("SMD parsing failed: ") + e.what();
-    }
-    
-    info.disk_size = fs::file_size(path);
-    info.estimated_vram = estimate_vram(info);
-    
-    return info;
-}
-
-ModelInfo ModelAnalyzer::analyze_dmx(const Path& path) {
-    ModelInfo info;
-    info.format = "SOURCE DMX";
-    
-    // DMX files are text-based (XML-like)
-    try {
-        std::string content = StringUtils::read_text_file(path).value_or("");
-        
-        if (content.empty()) {
-            info.error_message = "Empty DMX file";
-            return info;
-        }
-        
-        // Count vertex elements by looking for vertexdata tags
-        size_t pos = 0;
-        while ((pos = content.find("<vertexdata", pos)) != std::string::npos) {
-            // Found vertex data element
-            // Look for the count attribute or count the vertices inside
-            size_t end_tag = content.find("</vertexdata>", pos);
-            if (end_tag != std::string::npos) {
-                std::string vertex_data = content.substr(pos, end_tag - pos);
-                // Count vertices by looking for <v> or <vertex> tags
-                size_t v_count = std::count(vertex_data.begin(), vertex_data.end(), '<') / 3; // Rough
-                if (v_count > 0) {
-                    info.vertex_count += v_count;
-                }
-            }
-            pos += 11; // Move past "<vertexdata"
-        }
-        
-        // Count index elements (triangles)
-        pos = 0;
-        while ((pos = content.find("<indices", pos)) != std::string::npos) {
-            size_t end_tag = content.find("</indices>", pos);
-            if (end_tag != std::string::npos) {
-                std::string indices_data = content.substr(pos, end_tag - pos);
-                // Count indices by looking for numbers
-                // Each triangle has 3 indices
-                size_t num_count = std::count_if(indices_data.begin(), indices_data.end(),
-                                                [](char c){ return std::isdigit(c); });
-                if (num_count > 0) {
-                    // Rough estimate: each index is a number, triangles = indices/3
-                    info.triangle_count += num_count / 10; // Very rough
-                }
-            }
-            pos += 8; // Move past "<indices"
-        }
-        
-        // Count meshes by looking for mesh elements
-        pos = 0;
-        while ((pos = content.find("<mesh", pos)) != std::string::npos) {
-            info.mesh_count++;
-            pos += 5; // Move past "<mesh"
-        }
-        
-        // Count materials
-        pos = 0;
-        while ((pos = content.find("<material", pos)) != std::string::npos) {
-            info.material_count++;
-            pos += 9; // Move past "<material"
-        }
-        
-        // DMX files are often used with Source engine
-        if (content.find("source") != std::string::npos || 
-            content.find("valve") != std::string::npos) {
-            info.engine_hint = "Source Engine";
-        }
-        
-    } catch (const std::exception& e) {
-        info.error_message = std::string("DMX parsing failed: ") + e.what();
-    }
-    
-    info.disk_size = fs::file_size(path);
-    info.estimated_vram = estimate_vram(info);
-    
-    return info;
-}
-
-ModelInfo ModelAnalyzer::analyze_generic(const Path& path, FileType type) {
-    ModelInfo info;
-    info.disk_size = fs::file_size(path);
-    
-    // Try to determine if it's likely a model file based on extension
-    std::string ext = StringUtils::to_lower(path.extension().string());
-    if (!ext.empty() && ext[0] == '.') {
-        ext = ext.substr(1);
-    }
-    
-    // Known model extensions that we might not have specific handlers for
-    static const std::unordered_set<std::string> model_exts = {
-        "obj", "fbx", "gltf", "glb", "dae", "3ds", "max", "blend", 
-        "ma", "mb", "x", "mdl", "md2", "md3", "md5", "nif", "hkx",
-        "gr2", "smd", "dmx", "usd", "usda", "usdc", "usdz", "ply", "stl"
-    };
-    
-    bool is_likely_model = model_exts.find(ext) != model_exts.end();
-    
-    if (is_likely_model || info.disk_size > 1024) { // Assume files >1KB might be models
-        // Make reasonable assumptions
-        info.format = "UNKNOWN";
-        info.is_compiled = false;
-        
-        // Very rough estimate: assume it's a mesh with vertex data
-        // This is just a placeholder - real analysis would be much more sophisticated
-        if (info.disk_size > 0) {
-            // Assume 12 bytes per vertex (position + normal + texcoord as floats)
-            uint64_t estimated_vertices = info.disk_size / 12;
-            info.vertex_count = std::min(estimated_vertices, 1000000UL); // Cap at 1M
-            
-            if (info.vertex_count > 0) {
-                // Assume triangle mesh
-                info.triangle_count = std::min(vertex_count / 3, 500000UL);
-            }
-            
-            // Assume one mesh per file
-            info.mesh_count = 1;
-            
-            // Assume some materials
-            info.material_count = std::max(1UL, info.disk_size / (1024 * 1024)); // 1 per MB
-        }
-    } else {
-        // Definitely not a model
-        info.vertex_count = 0;
-        info.triangle_count = 0;
-        info.mesh_count = 0;
-        info.material_count = 0;
-        info.bone_count = 0;
-    }
-    
-    // Estimate VRAM usage
-    info.estimated_vram = estimate_vram(info);
-    
-    return info;
-}
-
-u64 ModelAnalyzer::estimate_vram(const ModelInfo& model) const {
-    // Estimate VRAM usage based on vertex data, index data, and textures
-    uint64_t vram = 0;
-    
-    // Vertex buffers: position (3 floats) + normal (3 floats) + texcoord (2 floats) = 8 floats per vertex
-    // Assuming 4 bytes per float = 32 bytes per vertex
-    vram += model.vertex_count * 32;
-    
-    // Index buffers: assuming 32-bit indices
-    vram += model.triangle_count * 3 * 4; // 3 indices per triangle, 4 bytes each
-    
-    // Texture estimates: rough estimate based on material count
-    // Assume average texture size of 1MB per material
-    vram += model.material_count * 1024 * 1024;
-    
-    // Bone matrices: if we have bones, assume 4x4 matrix per bone (16 floats)
-    if (model.bone_count > 0) {
-        vram += model.bone_count * 16 * 4; // 16 floats * 4 bytes each
-    }
-    
-    // Add some overhead
-    vram = vram * 1.5;
-    
-    return vram;
-}
-
-ModelStats ModelAnalyzer::stats() const {
-    std::lock_guard<std::mutex> lock(stats_mutex_);
-    return stats_;
-}
-
-String ModelAnalyzer::generate_report() const {
-    std::lock_guard<std::mutex> lock(stats_mutex_);
-    
-    std::stringstream ss;
-    ss << "Model Analysis Report\n";
-    ss << "=====================\n";
-    ss << "Total Models: " << stats_.total_models << "\n";
-    ss << "Total Vertices: " << StringUtils::format_number(stats_.total_vertices) << "\n";
-    ss << "Total Triangles: " << StringUtils::format_number(stats_.total_triangles) << "\n";
-    ss << "Total Meshes: " << stats_.total_meshes << "\n";
-    ss << "Total Materials: " << stats_.total_materials << "\n";
-    ss << "Total Bones: " << stats_.total_bones << "\n";
-    ss << "Total VRAM Estimate: " << StringUtils::format_bytes(stats_.total_vram) << "\n";
-    ss << "Total Disk Size: " << StringUtils::format_bytes(stats_.total_disk_size) << "\n\n";
-    
-    if (!stats_.format_counts.empty()) {
-        ss << "Format Distribution:\n";
-        for (const auto& [format, count] : stats_.format_counts) {
-            ss << "  " << format << ": " << count << "\n";
-        }
-        ss << "\n";
-    }
-    
-    if (!stats_.engine_counts.empty()) {
-        ss << "Engine Distribution:\n";
-        for (const auto& [engine, count] : stats_.engine_counts) {
-            ss << "  " << engine << ": " << count << "\n";
-        }
-        ss << "\n";
-    }
-    
-    return ss.str();
-}
-
-} // namespace game_req
-        
-        // Check header
-        char header[4];
-        file.read(header, 4);
-        
-        if (std::memcmp(header, "NIFF", 4) != 0) {
-            // Try little-endian versions
-            char nif1[4] = {'N', 'I', 'F', 'F'};
-            char nif2[4] = {'F', 'F', 'I', 'N'};
-            if (std::memcmp(header, nif1, 4) != 0 && 
-                std::memcmp(header, nif2, 4) != 0) {
-                info.error_message = "Invalid NIF file header";
-                return info;
-            }
-        }
-        
-        // Read version
-        uint16_t version;
-        file.read(reinterpret_cast<char*>(&version), 2);
-        
-        // Skip to the rest of the header (version dependent)
-        // For simplicity, we'll do a basic scan for NiTriShape and NiTriStrips
-        
-        std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-        
-        // Count NiTriShape and NiTriStrips (these contain geometry)
-        size_t trishape_count = std::count(content.begin(), content.end(), 'N') / 10; // Rough
-        size_t tristrip_count = std::count(content.begin(), content.end(), 'N') / 15; // Rough
-        
-        if (trishape_count > 0) {
-            // Each NiTriShape typically has one mesh
-            info.mesh_count = trishape_count;
-            
-            // Estimate vertices: look for m_usVertexCount or similar patterns
-            // This is very approximate
-            size_t vert_pos = 0;
-            while ((vert_pos = content.find("m_v", vert_pos)) != std::string::npos) {
-                // Look for patterns like "m_usVertexCount" or "m_uiVertexCount"
-                size_t test_pos = vert_pos;
-                if (test_pos + 20 < content.size()) {
-                    std::string test_str = content.substr(test_pos, 20);
-                    if (test_str.find("VertexCount") != std::string::npos) {
-                        // Found vertex count field, try to extract the value
-                        // This is getting too complex for a simple scanner - estimate instead
-                        info.vertex_count += 50; // Rough estimate per shape
-                    }
-                }
-                vert_pos += 2;
-            }
-            
-            if (info.vertex_count == 0 && info.mesh_count > 0) {
-                // Fallback estimate
-                info.vertex_count = info.mesh_count * 100;
-            }
-            
-            // Estimate triangles
-            if (info.vertex_count > 0) {
-                // Assume mostly triangular meshes
-                info.triangle_count = std::min(info.vertex_count / 3 * 2, 500000UL); // Slightly overestimate
-            }
-            
-        } else if (tristrip_count > 0) {
-            // NiTriStrips - each strip with n vertices creates (n-2) triangles
-            // Very rough estimate
-            info.vertex_count = tristrip_count * 50; // Rough estimate
-            info.triangle_count = tristrip_count * 40; // Rough estimate
-            info.mesh_count = tristrip_count;
-        }
-        
-        // Estimate bones (NIF files can have bones for skeletal animation)
-        size_t bone_count = std::count(content.begin(), content.end(), 'b') / 20; // Rough
-        info.bone_count = bone_count;
-        
-    } catch (const std::exception& e) {
-        info.error_message = std::string("NIF parsing failed: ") + e.what();
-    }
-    
-    info.disk_size = fs::file_size(path);
-    info.estimated_vram = estimate_vram(info);
-    
-    return info;
-}
-
-ModelInfo ModelAnalyzer::analyze_hkx(const Path& path) {
-    ModelInfo info;
-    info.format = "HAVOK HKX";
-    
-    // Havok HKX files are binary
-    try {
-        std::ifstream file(path, std::ios::binary);
-        if (!file) {
-            info.error_message = "Cannot open HKX file";
-            return info;
-        }
-        
-        // Check for Havok signature
-        char signature[4];
-        file.read(signature, 4);
-        
-        if (std::memcmp(signature, "\x1E\x0D\x0D\x0A", 4) != 0) { // HKX signature
-            // Try alternative signatures
-            char alt_sig[4] = {'H', 'a', 'v', 'o'};
-            if (std::memcmp(signature, alt_sig, 4) != 0) {
-                info.error_message = "Invalid HKX file header";
-                return info;
-            }
-        }
-        
-        // Read version info (simplified)
-        uint16_t hx_version;
-        file.read(reinterpret_cast<char*>(&hx_version), 2);
-        
-        // For now, estimate based on file size
-        // HKX files contain animation data, collision data, etc.
-        uint64_t file_size = fs::file_size = fs::file_size(path);
-        
-        // Rough estimates
-        // HKX files can be large due to animation data
-        if (info.disk_size > 1024) {
-            // Assume some portion is mesh data
-            size_t mesh_data_size = std::min(info.disk_size / 4, 10 * 1024 * 1024); // Max 10MB for mesh data
-            info.vertex_count = std::min(mesh_data_size / 50, 500000UL); // Rough estimate
-            if (info.vertex_count > 0) {
-                info.triangle_count = std::min(vertex_count / 3, 500000UL);
-            }
-            info.mesh_count = std::max(1UL, file_size / (5 * 1024 * 1024)); // Rough: 1 mesh per 5MB
-        }
-        
-    } catch (const std::exception& e) {
-        info.error_message = std::string("HKX parsing failed: ") + e.what();
-    }
-    
-    info.disk_size = fs::file_size(path);
-    info.estimated_vram = estimate_vram(info);
-    
-    return info;
-}
-
-ModelInfo ModelAnalyzer::analyze_gr2(const Path& path) {
-    ModelInfo info;
-    info.format = "GRANNY 2";
-    
-    // Granny 2 files are binary
-    try {
-        std::ifstream file(path, std::ios::binary);
-        if (!file) {
-            info.error_message = "Cannot open GR2 file";
-            return info;
-        }
-        
-        // Check for Granny signature
-        char signature[8];
-        file.read(signature, 8);
-        
-        if (std::memcmp(signature, "Granny 2", 8) != 0) {
-            info.error_message = "Invalid GR2 file header";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Invalid GR2 file header"));
         }
         
         // Read version
@@ -1713,17 +1463,18 @@ ModelInfo ModelAnalyzer::analyze_gr2(const Path& path) {
         
         if (file_size > 1024) {
             // Estimate mesh data portion
-            size_t mesh_data_size = std::min(file_size / 3, 20 * 1024 * 1024); // Max 20MB for mesh data
-            info.vertex_count = std::min(mesh_data_size / 30, 1000000UL); // Rough estimate
+            size_t mesh_data_size = std::min<size_t>(file_size / 3, 20 * 1024 * 1024); // Max 20MB for mesh data
+            info.vertex_count = std::min<size_t>(mesh_data_size / 30, 1000000); // Rough estimate
             if (info.vertex_count > 0) {
-                info.triangle_count = std::min(vertex_count / 3, 500000UL);
+                info.triangle_count = std::min<size_t>(info.vertex_count / 3, 500000);
             }
-            info.mesh_count = std::max(1UL, file_size / (2 * 1024 * 1024)); // Rough: 1 mesh per 2MB
-            info.material_count = std::max(1UL, file_size / (5 * 1024 * 1024)); // Rough: 1 material per 5MB
+            info.mesh_count = std::max<size_t>(1, file_size / (2 * 1024 * 1024)); // Rough: 1 mesh per 2MB
+            info.material_count = std::max<size_t>(1, file_size / (5 * 1024 * 1024)); // Rough: 1 material per 5MB
         }
         
     } catch (const std::exception& e) {
-        info.error_message = std::string("GR2 parsing failed: ") + e.what();
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("SMD parsing failed: ") + e.what()));
     }
     
     info.disk_size = fs::file_size(path);
@@ -1732,7 +1483,7 @@ ModelInfo ModelAnalyzer::analyze_gr2(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_smd(const Path& path) {
+Result<ModelInfo> ModelAnalyzer::analyze_smd(const Path& path) {
     ModelInfo info;
     info.format = "STUDIO MODEL";
     
@@ -1741,8 +1492,7 @@ ModelInfo ModelAnalyzer::analyze_smd(const Path& path) {
         std::string content = StringUtils::read_text_file(path).value_or("");
         
         if (content.empty()) {
-            info.error_message = "Empty SMD file";
-            return info;
+            return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, "Empty SMD file"));
         }
         
         // Count vertices by looking for vertex data
@@ -1791,7 +1541,8 @@ ModelInfo ModelAnalyzer::analyze_smd(const Path& path) {
         }
         
     } catch (const std::exception& e) {
-        info.error_message = std::string("SMD parsing failed: ") + e.what();
+        return make_unexpected(MAKE_ERROR(ErrorCode::InvalidFileFormat, 
+            std::string("SMD parsing failed: ") + e.what()));
     }
     
     info.disk_size = fs::file_size(path);
@@ -1800,85 +1551,7 @@ ModelInfo ModelAnalyzer::analyze_smd(const Path& path) {
     return info;
 }
 
-ModelInfo ModelAnalyzer::analyze_dmx(const Path& path) {
-    ModelInfo info;
-    info.format = "SOURCE DMX";
-    
-    // DMX files are text-based (XML-like)
-    try {
-        std::string content = StringUtils::read_text_file(path).value_or("");
-        
-        if (content.empty()) {
-            info.error_message = "Empty DMX file";
-            return info;
-        }
-        
-        // Count vertex elements by looking for vertexdata tags
-        size_t pos = 0;
-        while ((pos = content.find("<vertexdata", pos)) != std::string::npos) {
-            // Found vertex data element
-            // Look for the count attribute or count the vertices inside
-            size_t end_tag = content.find("</vertexdata>", pos);
-            if (end_tag != std::string::npos) {
-                std::string vertex_data = content.substr(pos, end_tag - pos);
-                // Count vertices by looking for <v> or <vertex> tags
-                size_t v_count = std::count(vertex_data.begin(), vertex_data.end(), '<') / 3; // Rough
-                if (v_count > 0) {
-                    info.vertex_count += v_count;
-                }
-            }
-            pos += 11; // Move past "<vertexdata"
-        }
-        
-        // Count index elements (triangles)
-        pos = 0;
-        while ((pos = content.find("<indices", pos)) != std::string::npos) {
-            size_t end_tag = content.find("</indices>", pos);
-            if (end_tag != std::string::npos) {
-                std::string indices_data = content.substr(pos, end_tag - pos);
-                // Count indices by looking for numbers
-                // Each triangle has 3 indices
-                size_t num_count = std::count_if(indices_data.begin(), indices_data.end(),
-                                                [](char c){ return std::isdigit(c); });
-                if (num_count > 0) {
-                    // Rough estimate: each index is a number, triangles = indices/3
-                    info.triangle_count += num_count / 10; // Very rough
-                }
-            }
-            pos += 8; // Move past "<indices"
-        }
-        
-        // Count meshes by looking for mesh elements
-        pos = 0;
-        while ((pos = content.find("<mesh", pos)) != std::string::npos) {
-            info.mesh_count++;
-            pos += 5; // Move past "<mesh"
-        }
-        
-        // Count materials
-        pos = 0;
-        while ((pos = content.find("<material", pos)) != std::string::npos) {
-            info.material_count++;
-            pos += 9; // Move past "<material"
-        }
-        
-        // DMX files are often used with Source engine
-        if (content.find("source") != std::string::npos || 
-            content.find("valve") != std::string::npos) {
-            info.engine_hint = "Source Engine";
-        }
-        
-    } catch (const std::exception& e) {
-        info.error_message = std::string("DMX parsing failed: ") + e.what();
-    }
-    
-    info.disk_size = fs::file_size(path);
-    info.estimated_vram = estimate_vram(info);
-    
-    return info;
-}
-
-ModelInfo ModelAnalyzer::analyze_generic(const Path& path, FileType type) {
+Result<ModelInfo> ModelAnalyzer::analyze_generic(const Path& path, FileType type) {
     ModelInfo info;
     info.disk_size = fs::file_size(path);
     
@@ -1911,7 +1584,7 @@ ModelInfo ModelAnalyzer::analyze_generic(const Path& path, FileType type) {
             
             if (info.vertex_count > 0) {
                 // Assume triangle mesh
-                info.triangle_count = std::min(info.vertex_count / 3, 500000UL);
+                info.triangle_count = std::min<u64>(info.vertex_count / 3, 500000);
             }
             
             // Assume one mesh per file
@@ -1961,11 +1634,6 @@ u64 ModelAnalyzer::estimate_vram(const ModelInfo& model) const {
     return vram;
 }
 
-ModelStats ModelAnalyzer::stats() const {
-    std::lock_guard<std::mutex> lock(stats_mutex_);
-    return stats_;
-}
-
 String ModelAnalyzer::generate_report() const {
     std::lock_guard<std::mutex> lock(stats_mutex_);
     
@@ -1997,14 +1665,7 @@ String ModelAnalyzer::generate_report() const {
         ss << "\n";
     }
     
-    return ss.str();
+return ss.str();
 }
 
 } // namespace game_req
-    }
-    
-    info.disk_size = fs::file_size(path);
-    info.estimated_vram = estimate_vram(info);
-    
-    return info;
-}

@@ -7,11 +7,9 @@
 #include <cstring>
 #include <algorithm>
 
-using namespace game_req;
+namespace game_req {
 
 AudioAnalyzer::AudioAnalyzer(const AnalyzerConfig& config) : config_(config) {}
-
-AudioAnalyzer::~AudioAnalyzer() = default;
 
 Result<std::vector<AudioInfo>> AudioAnalyzer::analyze(const std::vector<FileInfo>& audio_files) {
     std::vector<AudioInfo> results;
@@ -443,39 +441,35 @@ bool AudioAnalyzer::detect_streaming(const AudioInfo& audio, const Path& path) c
     return streaming_formats.find(ext) != streaming_formats.end();
 }
 
-AudioStats AudioAnalyzer::stats() const {
-    std::lock_guard<std::mutex> lock(stats_mutex_);
-    return stats_;
-}
-
 String AudioAnalyzer::generate_report() const {
     std::lock_guard<std::mutex> lock(stats_mutex_);
     
     std::stringstream ss;
     ss << "Audio Analysis Report\n";
     ss << "====================\n";
-    ss << "Total Files: " << stats_.total_files << "\n";
-    ss << "Total Duration: " << (stats_.total_duration_ms / 1000) << "s\n";
-    ss << "Total Disk Size: " << StringUtils::format_bytes(stats_.total_disk_size) << "\n";
-    ss << "Estimated RAM: " << StringUtils::format_bytes(stats_.total_estimated_ram) << "\n";
-    ss << "Max Sample Rate: " << stats_.max_sample_rate << " Hz\n";
-    ss << "Max Channels: " << stats_.max_channels << "\n\n";
+    ss << "Total files: " << stats_.total_files << "\n";
+    ss << "Total duration: " << stats_.total_duration_ms << " ms\n";
+    ss << "Total disk size: " << stats_.total_disk_size << " bytes\n";
+    ss << "Total estimated RAM: " << stats_.total_estimated_ram << " bytes\n";
+    ss << "Max sample rate: " << stats_.max_sample_rate << " Hz\n";
+    ss << "Max channels: " << stats_.max_channels << "\n";
     
-    if (!stats_.format_counts.empty()) {
-        ss << "Format Distribution:\n";
-        for (const auto& [fmt, count] : stats_.format_counts) {
-            ss << "  " << fmt << ": " << count << "\n";
-        }
-        ss << "\n";
+    ss << "\nFormat breakdown:\n";
+    for (const auto& [format, count] : stats_.format_counts) {
+        ss << "  " << format << ": " << count << "\n";
     }
     
-    if (!stats_.codec_counts.empty()) {
-        ss << "Codec Distribution:\n";
-        for (const auto& [codec, count] : stats_.codec_counts) {
-            ss << "  " << codec << ": " << count << "\n";
-        }
-        ss << "\n";
+    ss << "\nCodec breakdown:\n";
+    for (const auto& [codec, count] : stats_.codec_counts) {
+        ss << "  " << codec << ": " << count << "\n";
+    }
+    
+    ss << "\nSample rate breakdown:\n";
+    for (const auto& [rate, count] : stats_.sample_rate_counts) {
+        ss << "  " << rate << " Hz: " << count << "\n";
     }
     
     return ss.str();
 }
+
+} // namespace game_req

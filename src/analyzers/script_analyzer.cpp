@@ -11,8 +11,6 @@ using namespace game_req;
 
 ScriptAnalyzer::ScriptAnalyzer(const AnalyzerConfig& config) : config_(config) {}
 
-ScriptAnalyzer::~ScriptAnalyzer() = default;
-
 Result<std::vector<ScriptInfo>> ScriptAnalyzer::analyze(const std::vector<FileInfo>& scripts) {
     std::vector<ScriptInfo> results;
     results.reserve(scripts.size());
@@ -102,7 +100,12 @@ Result<ScriptInfo> ScriptAnalyzer::analyze_single(const FileInfo& script) {
 String ScriptAnalyzer::read_file_content(const Path& path) {
     std::ifstream file(path);
     if (!file) return "";
-    return String(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+    std::string content;
+    file.seekg(0, std::ios::end);
+    content.reserve(file.tellg());
+    file.seekg(0, std::ios::beg);
+    content.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+    return content;
 }
 
 Result<ScriptInfo> ScriptAnalyzer::analyze_lua(const Path& path) {
@@ -223,9 +226,9 @@ Result<ScriptInfo> ScriptAnalyzer::analyze_csharp(const Path& path) {
         info.framework_hint = "Godot C#";
     } else if (content.find("Microsoft.Xna") != String::npos || content.find("MonoGame") != String::npos) {
         info.engine_hint = "MonoGame";
-    } else if (content.find("Stride") != String::npos || content.Find("Xenko") != String::npos) {
+    } else if (content.find("Stride") != String::npos || content.find("Xenko") != String::npos) {
         info.engine_hint = "Stride";
-    } else if (content.Find("CryEngine") != String::npos || content.Find("CrySystem") != String::npos) {
+    } else if (content.find("CryEngine") != String::npos || content.find("CrySystem") != String::npos) {
         info.engine_hint = "CryEngine";
     }
     
@@ -508,11 +511,6 @@ void ScriptAnalyzer::detect_api_calls(ScriptInfo& script, StringView content) co
             script.api_calls.push_back(String(api));
         }
     }
-}
-
-ScriptStats ScriptAnalyzer::stats() const {
-    std::lock_guard<std::mutex> lock(stats_mutex_);
-    return stats_;
 }
 
 String ScriptAnalyzer::generate_report() const {

@@ -1,0 +1,45 @@
+#!/bin/bash
+# gcanner local launcher
+
+HERE="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+export LD_LIBRARY_PATH="$HERE/lib:$LD_LIBRARY_PATH"
+export GCANNER_DATA_DIR="$HERE/share/gcanner"
+
+echo "gcanner 1.0.0 - Game System Requirements Analyzer"
+echo "================================================="
+echo ""
+echo "Core library: libgcanner_analyzers.a (18 MB, 10 analyzers)"
+echo "Headers: $HERE/include/"
+echo "Data: $HERE/share/gcanner/"
+echo ""
+echo "To use as library in your project:"
+echo "  g++ -std=c++20 -I$HERE/include -L$HERE/lib your_app.cpp -lgcanner_analyzers -lfmt -lpthread"
+echo ""
+echo "Available analyzers:"
+echo "  1. TextureAnalyzer    (DDS, KTX, PNG, JPEG, etc.)"
+echo "  2. ModelAnalyzer      (FBX, OBJ, GLTF, COLLADA, etc.)"
+echo "  3. AudioAnalyzer      (WAV, OGG, MP3, FLAC, etc.)"
+echo "  4. ScriptAnalyzer     (C#, Lua, Python, JS, HLSL, GLSL)"
+echo "  4. ExecutableAnalyzer (PE, ELF, Mach-O)"
+echo "  5. ShaderAnalyzer     (HLSL, GLSL, SPIR-V, MSL, DXBC, DXIL)"
+echo "  6. ParticleAnalyzer   (PFX, PTX, PAR, EMITTER)"
+echo "  7. PhysicsAnalyzer    (PhysX, Havok, Bullet, ODE, Newton)"
+echo "  8. AIAnalyzer         (NavMesh, BehaviorTree, StateMachine, NeuralNet)"
+echo "  9. NetworkAnalyzer    (Photon, Mirror, Steam, EOS, RakNet, ENet)"
+echo "  10. AssetAggregator + RequirementCalculator"
+echo ""
+echo "To build GUI (requires Qt6):"
+echo "  cmake -B build -DCMAKE_BUILD_TYPE=Release"
+echo "  cmake --build build --target gcanner_gui"
+echo "./build/src/gui/gcanner_gui"
+
+# Test library
+echo ""
+echo "Testing library..."
+g++ -std=c++20 -I"$HERE/include" \
+    -I/run/media/vladimir_unknown/SharedDrive/unknown/gcanner/third_party/nlohmann_json \
+    -I/run/media/vladimir_unknown/SharedDrive/unknown/gcanner/third_party/fmt-main/include \
+    -L"$HERE/lib" \
+    -o /tmp/test_gcanner \
+    /run/media/vladimir_unknown/SharedDrive/unknown/gcanner/src/test_lib.cpp \
+    -lgcanner_analyzers -lfmt -lpthread 2>/dev/null && /tmp/test_gcanner

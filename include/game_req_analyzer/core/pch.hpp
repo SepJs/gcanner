@@ -68,6 +68,10 @@ using i64 = int64_t;
 using f32 = float;
 using f64 = double;
 
+// 128-bit types (using array for portability)
+using u128 = std::array<u8, 16>;
+using i128 = std::array<i8, 16>;
+
 using StringView = std::string_view;
 using String = std::string;
 using Path = fs::path;
@@ -83,6 +87,12 @@ inline constexpr u64 KiB = 1024;
 inline constexpr u64 MiB = 1024 * 1024;
 inline constexpr u64 GiB = 1024 * 1024 * 1024;
 inline constexpr u64 TiB = 1024ull * 1024 * 1024 * 1024;
+
+#define MAKEFOURCC(a, b, c, d) \
+    ((static_cast<u32>(static_cast<u8>(a)) << 0) | \
+     (static_cast<u32>(static_cast<u8>(b)) << 8) | \
+     (static_cast<u32>(static_cast<u8>(c)) << 16) | \
+     (static_cast<u32>(static_cast<u8>(d)) << 24))
 
 template<typename T>
 concept Arithmetic = std::is_arithmetic_v<T>;

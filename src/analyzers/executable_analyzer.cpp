@@ -11,8 +11,6 @@ using namespace game_req;
 
 ExecutableAnalyzer::ExecutableAnalyzer(const AnalyzerConfig& config) : config_(config) {}
 
-ExecutableAnalyzer::~ExecutableAnalyzer() = default;
-
 Result<std::vector<ExecutableInfo>> ExecutableAnalyzer::analyze(const std::vector<FileInfo>& executables) {
     std::vector<ExecutableInfo> results;
     results.reserve(executables.size());
@@ -526,11 +524,6 @@ String ExecutableAnalyzer::detect_compiler(const ExecutableInfo& exe) const {
         return "Clang (Xcode)";
     }
     return "Unknown";
-}
-
-ExecutableStats ExecutableAnalyzer::stats() const {
-    std::lock_guard<std::mutex> lock(stats_mutex_);
-    return stats_;
 }
 
 String ExecutableAnalyzer::generate_report() const {

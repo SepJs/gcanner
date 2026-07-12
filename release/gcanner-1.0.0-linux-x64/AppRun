@@ -1,0 +1,40 @@
+#!/bin/bash
+# gcanner AppImage entry point
+
+HERE="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+export LD_LIBRARY_PATH="$HERE/lib:$LD_LIBRARY_PATH"
+export GCANNER_DATA_DIR="$HERE/share/gcanner"
+
+# If gcanner_cli exists, run it
+if [[ -x "$HERE/bin/gcanner_cli" ]]; then
+    exec "$HERE/bin/gcanner_cli" "$@"
+fi
+
+# Otherwise show help
+cat << 'EOF'
+gcanner 1.0.0 - Game System Requirements Analyzer
+
+Usage: gcanner [OPTIONS] <game_directory>
+
+Options:
+  -f, --format FORMAT    Output format: terminal, json, csv, html, markdown
+  -o, --output FILE      Save report to file
+  -v, --verbose          Verbose output
+  --no-color             Disable colored output
+  -h, --help             Show this help
+  -V, --version          Show version
+
+Analyzers (all enabled by default):
+  --no-textures, --no-models, --no-audio, --no-scripts
+  --no-executables, --no-shaders, --no-particles
+  --no-physics, --no-ai, --no-network
+
+Examples:
+  gcanner /path/to/game
+  gcanner -f json -o report.json /path/to/game
+  gcanner --no-shaders --no-particles /path/to/game
+
+GUI Version: Run 'gcanner-gui' if installed (requires Qt6)
+
+For more information: https://github.com/gcanner/gcanner
+EOF

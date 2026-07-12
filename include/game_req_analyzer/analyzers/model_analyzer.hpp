@@ -32,6 +32,11 @@ struct ModelInfo {
     std::vector<String> animations;
     std::vector<String> materials;
     Bounds bounds{};
+    String error_message;  // For error reporting
+    u64 normal_count = 0;
+    u64 texcoord_count = 0;
+    u64 face_count = 0;
+    bool is_compiled = false;
 };
 
 struct ModelStats {
@@ -63,7 +68,7 @@ public:
 private:
     AnalyzerConfig config_;
     ModelStats stats_;
-    std::mutex stats_mutex_;
+    mutable std::mutex stats_mutex_;
     
     Result<ModelInfo> analyze_fbx(const Path& path);
     Result<ModelInfo> analyze_obj(const Path& path);
@@ -71,8 +76,16 @@ private:
     Result<ModelInfo> analyze_glb(const Path& path);
     Result<ModelInfo> analyze_collada(const Path& path);
     Result<ModelInfo> analyze_usd(const Path& path);
+    Result<ModelInfo> analyze_usdz(const Path& path);
+    Result<ModelInfo> analyze_blend(const Path& path);
+    Result<ModelInfo> analyze_max(const Path& path);
+    Result<ModelInfo> analyze_ma(const Path& path);
+    Result<ModelInfo> analyze_mb(const Path& path);
     Result<ModelInfo> analyze_x(const Path& path);
     Result<ModelInfo> analyze_mdl(const Path& path);
+    Result<ModelInfo> analyze_md2(const Path& path);
+    Result<ModelInfo> analyze_md3(const Path& path);
+    Result<ModelInfo> analyze_md5(const Path& path);
     Result<ModelInfo> analyze_nif(const Path& path);
     Result<ModelInfo> analyze_hkx(const Path& path);
     Result<ModelInfo> analyze_gr2(const Path& path);

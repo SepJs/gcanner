@@ -1,72 +1,26 @@
 #include <game_req_analyzer/scanner/file_scanner.hpp>
 #include <game_req_analyzer/scanner/file_type_detector.hpp>
+#include <game_req_analyzer/core/logger.hpp>
 #include <game_req_analyzer/utils/file_utils.hpp>
 #include <game_req_analyzer/utils/string_utils.hpp>
 #include <game_req_analyzer/utils/hash_utils.hpp>
-#include <game_req_analyzer/core/logger.hpp>
-#include <game_req_analyzer/utils/platform_utils.hpp>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <queue>
-#include <atomic>
+#include <game_req_analyzer/utils/time_utils.hpp>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <algorithm>
-#include <future>
+#include <mutex>
+#include <shared_mutex>
+#include <thread>
+#include <vector>
 
 using namespace game_req;
 
-namespace {
-    // Simple archive handlers for common formats
-    class ZipHandler : public ArchiveHandler {
-    public:
-        bool can_handle(FileType type) const override {
-            return type == FileType::ZIP;
-        }
-        
-        Result<std::vector<FileInfo>> extract(const Path& archive_path, const Path& dest_dir) override {
-            LOG_WARN("ZIP extraction not fully implemented");
-            return make_unexpected(MAKE_ERROR(ErrorCode::NotImplemented, "ZIP extraction not implemented"));
-        }
-        
-        Result<std::vector<FileInfo>> list_contents(const Path& archive_path) override {
-            LOG_WARN("ZIP listing not fully implemented");
-            return make_unexpected(MAKE_ERROR(ErrorCode::NotImplemented, "ZIP listing not implemented"));
-        }
-        
-        String name() const override { return "ZIP Handler"; }
-        std::vector<FileType> supported_types() const override { return {FileType::ZIP}; }
-    };
-    
-    class TarHandler : public ArchiveHandler {
-    public:
-        bool can_handle(FileType type) const override {
-            return type == FileType::TAR || type == FileType::GZ || 
-                   type == FileType::BZ2 || type == FileType::XZ;
-        }
-        
-        Result<std::vector<FileInfo>> extract(const Path& archive_path, const Path& dest_dir) override {
-            LOG_WARN("TAR extraction not fully implemented");
-            return make_unexpected(MAKE_ERROR(ErrorCode::NotImplemented, "TAR extraction not implemented"));
-        }
-        
-        Result<std::vector<FileInfo>> list_contents(const Path& archive_path) override {
-            LOG_WARN("TAR listing not fully implemented");
-            return make_unexpected(MAKE_ERROR(ErrorCode::NotImplemented, "TAR listing not implemented"));
-        }
-        
-        String name() const override { return "TAR Handler"; }
-        std::vector<FileType> supported_types() const override {
-            return {FileType::TAR, FileType::GZ, FileType::BZ2, FileType::XZ};
-        }
-    };
-}
+// Note: The actual archive handlers are now defined in archive_handler.cpp
+// and registered through the static registrators in that file
 
 FileScanner::FileScanner(const ScanConfig& config) : config_(config) {
-    // Register default archive handlers
-    ArchiveManager::instance().register_handler(std::make_unique<ZipHandler>());
-    ArchiveManager::instance().register_handler(std::make_unique<TarHandler>());
+    // Archive handlers are now registered via static initializers in archive_handler.cpp
+    // No need to register them here anymore
 }
 
 Result<ScanResult> FileScanner::scan(const Path& root_path) {
@@ -171,47 +125,45 @@ void FileScanner::scan_directory(const Path& dir, u32 depth) {
                     update_stats(*file_result);
                     {
                         std::lock_guard<std::mutex> lock(results_mutex_);
-                        result_.files.push_back(*file_result);
+                        results_.files.push_back(*file_result);
                     }
                     
                     // Handle archives if enabled
                     if (file_result->is_archive && !config_.follow_symlinks) {
                         // In a full implementation, we'd extract and scan archives
                         // For now, just count them
-                        result_.stats.archives_found++;
+                        results_.stats.archives_found++;
                     }
                 } else {
                     std::lock_guard<std::mutex> lock(results_mutex_);
-                    result_.errors.push_back(file_result.error());
-                    result_.stats.errors++;
+                    results_.errors.push_back(file_result.error());
+                    results_.stats.errors++;
                 }
             }
         }
     } catch (const fs::filesystem_error& e) {
         LOG_WARN("Filesystem error scanning {}: {}", dir.string(), e.what());
         std::lock_guard<std::mutex> lock(results_mutex_);
-        result_.errors.push_back(MAKE_ERROR(ErrorCode::IoError, 
+        results_.errors.push_back(MAKE_ERROR(ErrorCode::IoError, 
             std::format("Filesystem error: {}", e.what())));
-        result_.stats.errors++;
+        results_.stats.errors++;
     } catch (const std::exception& e) {
         LOG_WARN("Error scanning {}: {}", dir.string(), e.what());
         std::lock_guard<std::mutex> lock(results_mutex_);
-        result_.errors.push_back(MAKE_ERROR(ErrorCode::IoError, 
+        results_.errors.push_back(MAKE_ERROR(ErrorCode::IoError, 
             std::format("Error: {}", e.what())));
-        result_.stats.errors++;
+        results_.stats.errors++;
     }
 }
 
-Result<void> FileScanner::scan_file(const Path& file_path) {
-    FileInfo info;
-    
+Result<FileInfo> FileScanner::scan_file(const Path& file_path) {
     try {
         // Detect file type
         auto detect_result = FileTypeDetector::instance().detect(file_path);
         if (!detect_result) {
             return make_unexpected(detect_result.error());
         }
-        info = *detect_result;
+        FileInfo info = *detect_result;
         
         // Check file size limits
         if (info.size > config_.max_file_size) {
@@ -220,17 +172,22 @@ Result<void> FileScanner::scan_file(const Path& file_path) {
         }
         
         // Check if extension is excluded
-        String ext = StringUtils::to_lower(fs::extension(file_path).string());
+        String ext = StringUtils::to_lower(file_path.extension().string());
         if (!ext.empty() && config_.excluded_exts.find(ext) != config_.excluded_exts.end()) {
             return make_unexpected(MAKE_ERROR(ErrorCode::InvalidArgument, 
                 std::format("Excluded extension: {}", ext)));
         }
         
-        // Calculate hash if requested
+// Calculate hash if requested
         if (config_.verify_checksums && info.size < 100 * MiB) { // Only hash files < 100MB for performance
-            auto hash_result = HashUtils::sha256(file_path);
-            if (hash_result) {
-                std::copy(hash_result->begin(), hash_result->end(), info.hash.begin());
+            // Read file content into a buffer for hashing
+            std::ifstream file(file_path, std::ios::binary);
+            if (file) {
+                std::vector<u8> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+                // Compute hash
+                std::array<u8, 32> hash_result = HashUtils::sha256(buffer);
+                std::copy(hash_result.begin(), hash_result.end(), info.hash.begin());
                 info.hash_valid = true;
             }
         }
@@ -246,19 +203,18 @@ Result<void> FileScanner::scan_file(const Path& file_path) {
 }
 
 void FileScanner::update_stats(const FileInfo& file) {
-    result_.stats.files_scanned++;
-    result_.stats.total_size += file.size;
+    results_.stats.files_scanned++;
+    results_.stats.total_size += file.size;
     
-    // Update depth tracking
+    // Update depth counting by counting the number of path separators
     u32 depth = 0;
-    for (auto p = file.path.begin(); p != file.path.end(); ++p) {
-        if (*p == fs::path::preferred_separator) {
+    auto path_str = file.path.string();
+    for (char c : path_str) {
+        if (c == fs::path::preferred_separator) {
             depth++;
         }
     }
-    if (depth > result_.stats.current_depth.load()) {
-        result_.stats.current_depth.store(depth);
+    if (depth > results_.stats.current_depth) {
+        results_.stats.current_depth = depth;
     }
 }
-
-} // namespace game_req

@@ -1,0 +1,186 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  APP_NAME: gcanner
+  QT_VERSION: 6.6
+
+jobs:
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            qt6-base-dev qt6-charts-dev qt6-svg-dev \
+            nlohmann-json3-dev libfmt-dev \
+            cmake ninja-build g++ \
+            appimagetool rpm dpkg-dev \
+            libmagic-dev libpng-dev libssl-dev \
+            imagemagick
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Build Installers
+        run: |
+          chmod +x installer/linux/build_installer.sh
+          cd installer/linux && ./build_installer.sh
+          cd ../..
+          mv installer/linux/*.AppImage installer/linux/*.deb installer/linux/*.rpm installer/linux/*.sh . 2>/dev/null || true
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            *.AppImage
+            *.deb
+            *.rpm
+            *-linux-installer.sh
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2019_64
+          modules: qtcharts qtsvg
+
+      - name: Install dependencies
+        run: |
+          choco install cmake ninja nlohmann-json fmt --yes
+          choco install nsis --yes
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Build NSIS Installer
+        run: |
+          # Copy required files for NSIS
+          mkdir -p installer/windows/dist
+          copy build\src\gui\gcanner_gui.exe installer\windows\dist\
+          copy build\*.dll installer\windows\dist\ 2>nul
+          copy /y LICENSE installer\windows\dist\
+          copy /y data installer\windows\dist\ 2>nul
+          
+          # Run NSIS
+          makensis installer\windows\gcanner_installer.nsi
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: gcanner-*.exe
+
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: desktop
+          arch: clang_64
+          modules: qtcharts qtsvg
+
+      - name: Install dependencies
+        run: |
+          brew install cmake ninja nlohmann-json fmt create-dmg
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Build macOS Installer
+        run: |
+          chmod +x installer/macos/build_installer.sh
+          cd installer/macos && ./build_installer.sh
+          cd ../..
+          mv installer/macos/*.pkg installer/macos/*.dmg . 2>/dev/null || true
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-packages
+          path: |
+            *.pkg
+            *.dmg
+
+  create-release:
+    name: Create Release
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-packages
+          path: artifacts/linux
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: artifacts/windows
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-packages
+          path: artifacts/macos
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/linux/*.AppImage
+            artifacts/linux/*.deb
+            artifacts/linux/*.rpm
+            artifacts/linux/*-linux-installer.sh
+            artifacts/windows/*.exe
+            artifacts/macos/*.pkg
+            artifacts/macos/*.dmg
+          generate_release_notes: true
+          draft: false
+          prerelease: false

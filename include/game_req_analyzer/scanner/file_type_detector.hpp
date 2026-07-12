@@ -95,10 +95,12 @@ struct FileInfo {
     FileType type = FileType::Unknown;
     String mime_type;
     String extension;
+    String filename;
     bool is_archive = false;
     bool is_compressed = false;
     f32 compression_ratio = 1.0f;
     u64 uncompressed_size = 0;
+    u64 compressed_size = 0;
     std::array<u8, 32> hash{};
     bool hash_valid = false;
     TimePoint modified_time;
@@ -121,10 +123,13 @@ public:
     Result<FileType> detect_from_extension(const Path& path) const;
     Result<FileType> detect_from_content(const Path& path) const;
     Result<FileType> detect_from_magic(const Path& path) const;
+    Result<FileType> detect_from_text_content(const Path& path) const; // Added missing declaration
     
     void register_signature(FileType type, const FileSignature& sig);
     void register_extension(FileType type, StringView ext);
     void register_mime(FileType type, StringView mime);
+    
+    [[nodiscard]] FileCategory categorize_type(FileType type) const;
     
     [[nodiscard]] const std::unordered_map<String, FileType>& extension_map() const;
     [[nodiscard]] const std::unordered_map<String, FileType>& mime_map() const;

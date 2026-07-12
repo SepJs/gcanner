@@ -51,7 +51,7 @@ struct HardwareConfig {
 };
 
 struct OutputConfig {
-    enum class Format { Terminal, Json, Csv, Html, Markdown };
+    enum class Format { Terminal, JSON, Csv, Html, Markdown };
     Format format = Format::Terminal;
     Path output_file;
     bool verbose = false;
@@ -61,6 +61,14 @@ struct OutputConfig {
     bool show_recommendations = true;
     bool show_alternatives = true;
     bool show_bottlenecks = true;
+    bool enable_ansi_colors = true;
+    bool enable_unicode = true;
+    bool use_unicode_symbols = true;
+    bool show_details = true;
+    bool use_integer_bytes = false;
+    bool use_grouping_separators = true;
+    enum class DurationFormat { Short, Long, ISO };
+    DurationFormat duration_format = DurationFormat::Short;
 };
 
 struct AppConfig {

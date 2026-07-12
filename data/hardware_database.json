@@ -1,0 +1,41 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-07-12",
+  "cpus": [
+    {"name": "Intel Core i9-13900K", "vendor": "Intel", "arch": "Raptor Lake", "cores": 24, "threads": 32, "base_clock": 3.0, "boost_clock": 5.8, "tdp": 125, "socket": "LGA1700", "release": "2022-Q4", "passmark": 46500, "price_usd": 589},
+    {"name": "AMD Ryzen 9 7950X", "vendor": "AMD", "arch": "Zen 4", "cores": 16, "threads": 32, "base_clock": 4.5, "boost_clock": 5.7, "tdp": 170, "socket": "AM5", "release": "2022-Q3", "passmark": 45200, "price_usd": 699},
+    {"name": "Intel Core i7-13700K", "vendor": "Intel", "arch": "Raptor Lake", "cores": 16, "threads": 24, "base_clock": 3.4, "boost_clock": 5.4, "tdp": 125, "socket": "LGA1700", "release": "2022-Q4", "passmark": 38900, "price_usd": 409},
+    {"name": "AMD Ryzen 7 7800X3D", "vendor": "AMD", "arch": "Zen 4", "cores": 8, "threads": 16, "base_clock": 4.2, "boost_clock": 5.0, "tdp": 120, "socket": "AM5", "release": "2023-Q1", "passmark": 34500, "price_usd": 449},
+    {"name": "Intel Core i5-13600K", "vendor": "Intel", "arch": "Raptor Lake", "cores": 14, "threads": 20, "base_clock": 3.5, "boost_clock": 5.1, "tdp": 125, "socket": "LGA1700", "release": "2022-Q4", "passmark": 31200, "price_usd": 319},
+    {"name": "AMD Ryzen 5 7600X", "vendor": "AMD", "arch": "Zen 4", "cores": 6, "threads": 12, "base_clock": 4.7, "boost_clock": 5.3, "tdp": 105, "socket": "AM5", "release": "2022-Q3", "passmark": 23400, "price_usd": 299},
+    {"name": "Intel Core i9-12900K", "vendor": "Intel", "arch": "Alder Lake", "cores": 16, "threads": 24, "base_clock": 3.2, "boost_clock": 5.2, "tdp": 125, "socket": "LGA1700", "release": "2022-Q1", "passmark": 35800, "price_usd": 589},
+    {"name": "AMD Ryzen 9 5950X", "vendor": "AMD", "arch": "Zen 3", "cores": 16, "threads": 32, "base_clock": 3.4, "boost_clock": 4.9, "tdp": 105, "socket": "AM4", "release": "2020-Q4", "passmark": 33500, "price_usd": 549},
+    {"name": "Intel Core i7-12700K", "vendor": "Intel", "arch": "Alder Lake", "cores": 12, "threads": 20, "base_clock": 3.6, "boost_clock": 5.0, "tdp": 125, "socket": "LGA1700", "release": "2022-Q1", "passmark": 29800, "price_usd": 409},
+    {"name": "AMD Ryzen 7 5800X3D", "vendor": "AMD", "arch": "Zen 3", "cores": 8, "threads": 16, "base_clock": 3.4, "boost_clock": 4.5, "tdp": 105, "socket": "AM4", "release": "2022-Q1", "passmark": 24500, "price_usd": 449}
+  ],
+  "gpus": [
+    {"name": "NVIDIA RTX 4090", "vendor": "NVIDIA", "arch": "Ada Lovelace", "vram_gb": 24, "vram_type": "GDDR6X", "base_clock": 2235, "boost_clock": 2520, "tdp": 450, "release": "2022-Q4", "3dmark": 36500, "price_usd": 1599, "perf_per_dollar": 22.8},
+    {"name": "NVIDIA RTX 4080", "vendor": "NVIDIA", "arch": "Ada Lovelace", "vram_gb": 16, "vram_type": "GDDR6X", "base_clock": 2205, "boost_clock": 2505, "tdp": 320, "release": "2022-Q4", "3dmark": 29800, "price_usd": 1199, "perf_per_dollar": 24.9},
+    {"name": "AMD RX 7900 XTX", "vendor": "AMD", "arch": "RDNA 3", "vram_gb": 24, "vram_type": "GDDR6", "base_clock": 1855, "boost_clock": 2499, "tdp": 355, "release": "2022-Q4", "3dmark": 28500, "price_usd": 999, "perf_per_dollar": 28.5},
+    {"name": "NVIDIA RTX 4070 Ti", "vendor": "NVIDIA", "arch": "Ada Lovelace", "vram_gb": 12, "vram_type": "GDDR6X", "base_clock": 2310, "boost_clock": 2610, "tdp": 285, "release": "2023-Q1", "3dmark": 24800, "price_usd": 799, "perf_per_dollar": 31.0},
+    {"name": "AMD RX 7900 XT", "vendor": "AMD", "arch": "RDNA 3", "vram_gb": 20, "vram_type": "GDDR6", "base_clock": 1500, "boost_clock": 2394, "tdp": 315, "release": "2022-Q4", "3dmark": 24200, "price_usd": 899, "perf_per_dollar": 26.9},
+    {"name": "NVIDIA RTX 3080", "vendor": "NVIDIA", "arch": "Ampere", "vram_gb": 10, "vram_type": "GDDR6X", "base_clock": 1440, "boost_clock": 1710, "tdp": 320, "release": "2020-Q3", "3dmark": 21500, "price_usd": 699, "perf_per_dollar": 30.8},
+    {"name": "AMD RX 6800 XT", "vendor": "AMD", "arch": "RDNA 2", "vram_gb": 16, "vram_type": "GDDR6", "base_clock": 1825, "boost_clock": 2250, "tdp": 300, "release": "2020-Q4", "3dmark": 19800, "price_usd": 649, "perf_per_dollar": 30.5},
+    {"name": "NVIDIA RTX 3070", "vendor": "NVIDIA", "arch": "Ampere", "vram_gb": 8, "vram_type": "GDDR6", "base_clock": 1500, "boost_clock": 1725, "tdp": 220, "release": "2020-Q3", "3dmark": 16200, "price_usd": 499, "perf_per_dollar": 32.5}
+  ],
+  "ram": [
+    {"name": "Corsair Dominator Platinum RGB 64GB (2x32GB)", "capacity_gb": 64, "type": "DDR5", "speed_mt": 6000, "cas_latency": 36, "voltage": 1.35, "ecc": false, "price_usd": 399, "perf_per_dollar": 0.16},
+    {"name": "G.Skill Trident Z5 RGB 64GB (2x32GB)", "capacity_gb": 64, "type": "DDR5", "speed_mt": 6400, "cas_latency": 32, "voltage": 1.4, "ecc": false, "price_usd": 349, "perf_per_dollar": 0.18},
+    {"name": "Kingston Fury Beast 32GB (2x16GB)", "capacity_gb": 32, "type": "DDR5", "speed_mt": 5600, "cas_latency": 40, "voltage": 1.25, "ecc": false, "price_usd": 149, "perf_per_dollar": 0.21},
+    {"name": "Crucial 32GB (2x16GB) DDR5", "capacity_gb": 32, "type": "DDR5", "speed_mt": 4800, "cas_latency": 40, "voltage": 1.1, "ecc": false, "price_usd": 119, "perf_per_dollar": 0.25},
+    {"name": "Samsung 32GB DDR5-4800 ECC", "capacity_gb": 32, "type": "DDR5", "speed_mt": 4800, "cas_latency": 40, "voltage": 1.1, "ecc": true, "price_usd": 189, "perf_per_dollar": 0.16},
+    {"name": "Corsair Vengeance LPX 32GB (2x16GB) DDR4", "capacity_gb": 32, "type": "DDR4", "speed_mt": 3600, "cas_latency": 18, "voltage": 1.35, "ecc": false, "price_usd": 129, "perf_per_dollar": 0.23}
+  ],
+  "storage": [
+    {"name": "Samsung 990 Pro 2TB", "capacity_gb": 2000, "interface": "PCIe 4.0 x4", "form_factor": "M.2 2280", "seq_read": 7450, "seq_write": 6900, "rand_read": 1400000, "rand_write": 1550000, "endurance_tbw": 1200, "price_usd": 219, "price_per_gb": 0.11},
+    {"name": "WD Black SN850X 2TB", "capacity_gb": 2000, "interface": "PCIe 4.0 x4", "form_factor": "M.2 2280", "seq_read": 7300, "seq_write": 6600, "rand_read": 1200000, "rand_write": 1300000, "endurance_tbw": 1200, "price_usd": 199, "price_per_gb": 0.10},
+    {"name": "Seagate FireCuda 530 2TB", "capacity_gb": 2000, "interface": "PCIe 4.0 x4", "form_factor": "M.2 2280", "seq_read": 7300, "seq_write": 6900, "rand_read": 1000000, "rand_write": 1000000, "endurance_tbw": 2550, "price_usd": 229, "price_per_gb": 0.11},
+    {"name": "Samsung 870 EVO 2TB", "capacity_gb": 2000, "interface": "SATA 6Gb/s", "form_factor": "2.5\"", "seq_read": 560, "seq_write": 530, "rand_read": 98000, "rand_write": 88000, "endurance_tbw": 1200, "price_usd": 169, "price_per_gb": 0.08},
+    {"name": "WD Blue SN570 1TB", "capacity_gb": 1000, "interface": "PCIe 3.0 x4", "form_factor": "M.2 2280", "seq_read": 3500, "seq_write": 3000, "rand_read": 410000, "rand_write": 400000, "endurance_tbw": 600, "price_usd": 79, "price_per_gb": 0.08}
+  ]
+}

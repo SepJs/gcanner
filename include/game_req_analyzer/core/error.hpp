@@ -54,4 +54,10 @@ using Result = Expected<T, Error>;
 
 inline Result<void> success() { return {}; }
 
+template<typename T>
+inline Result<T> success(const T& value) { return Result<T>(value); }
+
+template<typename T>
+inline Result<T> success(T&& value) { return Result<T>(std::forward<T>(value)); }
+
 } // namespace game_req

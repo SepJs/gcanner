@@ -1,0 +1,9 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/icons">
+    <file>icons/settings.svg</file>
+    <file>icons/check.svg</file>
+</qresource>
+<qresource prefix="/data">
+    <file>data/hardware_database.json</file>
+</qresource>
+</RCC>

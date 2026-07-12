@@ -497,120 +497,45 @@ String ResultsFormatter::format_html(const RequirementResult& req) const {
     oss << "</head>\n<body>\n";
     oss << "<h1>GameReqAnalyzer Report</h1>\n";
     oss << "<h2>System Requirements Analysis</h2>\n";
+
+    auto format_req_html = [&](const HardwareRequirement& r, const String& label) {
+        std::ostringstream s;
+        s << "<div class=\"section\">\n";
+        s << "<h3>" << label << "</h3>\n";
+        s << "<div class=\"requirement\"><span class=\"label\">OS:</span><span class=\"value\"> " 
+            << r.os_minimum << " / " << r.os_recommended << "</span></div>\n";
+        s << "<div class=\"requirement\"><span class=\"label\">CPU:</span><span class=\"value\"> " 
+            << r.cpu_vendor << " " << r.cpu_arch << " @ " 
+            << std::fixed << std::setprecision(1) << r.cpu_base_clock 
+            << " GHz (" << r.cpu_cores << " cores/" 
+            << r.cpu_threads << " threads)</span></div>\n";
+        s << "<div class=\"requirement\"><span class=\"label\">GPU:</span><span class=\"value\"> " 
+            << r.gpu_vendor << " " << r.gpu_architecture << " ("
+            << r.gpu_vram / 1024 << " GB " << r.gpu_vram_type << " VRAM)</span></div>\n";
+        s << "<div class=\"requirement\"><span class=\"label\">RAM:</span><span class=\"value\"> " 
+            << r.ram_capacity / 1024 << " GB " << r.ram_type << " @ " << r.ram_speed << " MT/s</span></div>\n";
+        s << "<div class=\"requirement\"><span class=\"label\">Storage:</span><span class=\"value\"> " 
+            << r.storage_type << " " << r.storage_capacity << " GB ("
+            << r.storage_read_speed << " MB/s read)</span></div>\n";
+        s << "<div class=\"requirement\"><span class=\"label\">API:</span><span class=\"value\"> " 
+            << "DirectX " << r.dx_version << ", Vulkan " << r.vk_version << ", Metal " << r.metal_version << "</span></div>\n";
+        s << "</div>\n";
+        return s.str();
+    };
+
+    oss << format_req_html(req.minimum, "Minimum Requirements");
+    oss << format_req_html(req.recommended, "Recommended Requirements");
     
-    // Minimum requirements
-    oss << "<div class=\"section\">\n";
-    oss << "<h3>Minimum Requirements</h3>\n";
-    oss << "<div class=\"requirement\"><span class=\"label\">OS:</span><span class=\"value\"> " 
-        << req.minimum.os << "</span></div>\n";
-    oss << "<div class=\"requirement\"><span class=\"label\">CPU:</span><span class=\"value\"> " 
-        << req.minimum.cpu.name << " @ " 
-        << std::fixed << std::setprecision(1) << req.minimum.cpu.base_clock 
-        << " GHz (" << req.minimum.cpu.cores << " cores/" 
-        << req.minimum.cpu.threads << " threads)</span></div>\n";
-    oss << "<div class=\"requirement\"><span class=\"label\">GPU:</span><span class=\"value\"> " 
-        << req.minimum.gpu.name << " (" 
-        << req.minimum.gpu.vram / 1024 << " GB VRAM)</span></div>\n";
-    oss << "<div class=\"requirement\"><span class=\"label\">RAM:</span><span class=\"value\"> " 
-        << req.minimum.ram << " GB</span></div>\n";
-    oss << "<div class=\"requirement\"><span class=\"label\">Storage:</span><span class=\"value\"> " 
-        << req.minimum.storage.type << " " 
-        << req.minimum.storage.name << " (" 
-        << req.minimum.storage.capacity << " GB available)</span></div>\n";
-    oss << "<div class=\"requirement\"><span class=\"label\">DirectX:</span><span class=\"value\"> " 
-        << req.minimum.directx << "</span></div>\n";
-    oss << "</div>\n";
-    
-    // Recommended requirements
-    oss << "<div class=\"section\">\n";
-    oss << "<h3>Recommended Requirements</h3>\n";
-    oss << "<div class=\"requirement\"><span class=\"label\">OS:</span><span class=\"value\"> " 
-        << req.recommended.os << "</span></div>\n";
-    oss << "<div class=\"requirement\"><span class=\"label\">CPU:</span><span class=\"value\"> " 
-        << req.recommended.cpu.name << " @ " 
-        << std::fixed << std::setprecision(1) << req.recommended.cpu.base_clock 
-        << " GHz (" << req.recommended.cpu.cores << " cores/" 
-        << req.recommended.cpu.threads << " threads)</span></div>\n";
-    oss << "<div class=\"requirement\"><span class=\"label\">GPU:</span><span class=\"value\"> " 
-        << req.recommended.gpu.name << " ("
-        << req.recommended.gpu.vram / 1024 << " GB VRAM)</span></div>\n";
-    oss << "<div class=\"requirement\"><span class=\"label\">RAM:</span><span class=\"value\"> " 
-        << req.recommended.ram << " GB</span></div>\n";
-    oss << "<div class=\"requirement\"><span class=\"label\">Storage:</span><span class=\"value\"> " 
-        << req.recommended.storage.type << " " 
-        << req.recommended.storage.name << " (" 
-        << req.recommended.storage.capacity << " GB available)</span></div>\n";
-    oss << "<div class=\"requirement\"><span class=\"label\">DirectX:</span><span class=\"value\"> " 
-        << req.recommended.directx << "</span></div>\n";
-    oss << "</div>\n";
-    
-    // High requirements (if available)
-    if (req.high.cpu.name != "") {
-        oss << "<div class=\"section\">\n";
-        oss << "<h3>High Requirements</h3>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">CPU:</span><span class=\"value\"> " 
-            << req.high.cpu.name << " @ " 
-            << std::fixed << std::setprecision(1) << req.high.cpu.base_clock 
-            << " GHz (" << req.high.cpu.cores << " cores/" 
-            << req.high.cpu.threads << " threads)</span></div>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">GPU:</span><span class=\"value\"> " 
-            << req.high.gpu.name << " ("
-            << req.high.gpu.vram / 1024 << " GB VRAM)</span></div>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">RAM:</span><span class=\"value\"> " 
-            << req.high.ram << " GB</span></div>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">Storage:</span><span class=\"value\"> " 
-            << req.high.storage.type << " " 
-            << req.high.storage.name << " (" 
-            << req.high.storage.capacity << " GB available)</span></div>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">DirectX:</span><span class=\"value\"> " 
-            << req.high.directx << "</span></div>\n";
-        oss << "</div>\n";
+    if (!req.high.specific_cpus.empty() || req.high.cpu_cores > 0) {
+        oss << format_req_html(req.high, "High Requirements");
     }
     
-    // Ultra requirements (if available)
-    if (req.ultra.cpu.name != "") {
-        oss << "<div class=\"section\">\n";
-        oss << "<h3>Ultra Requirements</h3>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">CPU:</span><span class=\"value\"> " 
-            << req.ultra.cpu.name << " @ " 
-            << std::fixed << std::setprecision(1) << req.ultra.cpu.base_clock 
-            << " GHz (" << req.ultra.cpu.cores << " cores/" 
-            << req.ultra.cpu.threads << " threads)</span></div>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">GPU:</span><span class=\"value\"> " 
-            << req.ultra.gpu.name << " ("
-            << req.ultra.gpu.vram / 1024 << " GB VRAM)</span></div>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">RAM:</span><span class=\"value\"> " 
-            << req.ultra.ram << " GB</span></div>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">Storage:</span><span class=\"value\"> " 
-            << req.ultra.storage.type << " " 
-            << req.ultra.storage.name << " (" 
-            << req.ultra.storage.capacity << " GB available)</span></div>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">DirectX:</span><span class=\"value\"> " 
-            << req.ultra.directx << "</span></div>\n";
-        oss << "</div>\n";
+    if (!req.ultra.specific_cpus.empty() || req.ultra.cpu_cores > 0) {
+        oss << format_req_html(req.ultra, "Ultra Requirements");
     }
     
-    // Ray tracing requirements (if available)
     if (req.ray_tracing.has_value()) {
-        oss << "<div class=\"section\">\n";
-        oss << "<h3>Ray Tracing Requirements</h3>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">CPU:</span><span class=\"value\"> " 
-            << req.ray_tracing->cpu.name << " @ " 
-            << std::fixed << std::setprecision(1) << req.ray_tracing->cpu.base_clock 
-            << " GHz (" << req.ray_tracing->cpu.cores << " cores/" 
-            << req.ray_tracing->cpu.threads << " threads)</span></div>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">GPU:</span><span class=\"value\"> " 
-            << req.ray_tracing->gpu.name << " ("
-            << req.ray_tracing->gpu.vram / 1024 << " GB VRAM)</span></div>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">RAM:</span><span class=\"value\"> " 
-            << req.ray_tracing->ram << " GB</span></div>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">Storage:</span><span class=\"value\"> " 
-            << req.ray_tracing->storage.type << " " 
-            << req.ray_tracing->storage.name << " (" 
-            << req.ray_tracing->storage.capacity << " GB available)</span></div>\n";
-        oss << "<div class=\"requirement\"><span class=\"label\">DirectX:</span><span class=\"value\"> " 
-            << req.ray_tracing->directx << "</span></div>\n";
-        oss << "</div>\n";
+        oss << format_req_html(req.ray_tracing.value(), "Ray Tracing Requirements");
     }
     
     // Confidence and notes
@@ -662,17 +587,16 @@ Result<void> ResultsFormatter::write_to_file(const String& content, const Path& 
 String ResultsFormatter::format_hardware_req(const HardwareRequirement& req, RequirementLevel level) const {
     std::ostringstream oss;
     oss << "Hardware Requirement (" << static_cast<int>(level) << "):\n";
-    oss << "  CPU: " << req.cpu.name << " @ " 
-        << std::fixed << std::setprecision(1) << req.cpu.base_clock 
-        << " GHz (" << req.cpu.cores << " cores/" 
-        << req.cpu.threads << " threads)\n";
-    oss << "  GPU: " << req.gpu.name << " ("
-        << req.gpu.vram / 1024 << " GB VRAM)\n";
-    oss << "  RAM: " << req.ram << " GB\n";
-    oss << "  Storage: " << req.storage.type << " " 
-        << req.storage.name << " (" 
-        << req.storage.capacity << " GB available)\n";
-    oss << "  DirectX: " << req.directx << "\n";
+    oss << "  CPU: " << req.cpu_vendor << " " << req.cpu_arch << " @ " 
+        << std::fixed << std::setprecision(1) << req.cpu_base_clock 
+        << " GHz (" << req.cpu_cores << " cores/" 
+        << req.cpu_threads << " threads)\n";
+    oss << "  GPU: " << req.gpu_vendor << " " << req.gpu_architecture << " ("
+        << req.gpu_vram / 1024 << " GB " << req.gpu_vram_type << " VRAM)\n";
+    oss << "  RAM: " << req.ram_capacity / 1024 << " GB " << req.ram_type << " @ " << req.ram_speed << " MT/s\n";
+    oss << "  Storage: " << req.storage_type << " " << req.storage_capacity << " GB ("
+        << req.storage_read_speed << " MB/s read)\n";
+    oss << "  DirectX: " << req.dx_version << ", Vulkan: " << req.vk_version << "\n";
     return oss.str();
 }
 
@@ -691,8 +615,8 @@ String ResultsFormatter::format_cpu_recommendations(const std::vector<const CPUE
         << std::setw(6) << "GHz" 
         << std::setw(8) << "Score" 
         << std::setw(8) << "$" 
-        << std::setw(10) => "$/Score" 
-        << std::setw(10) => "Perf/$" << "\n";
+        << std::setw(10) << "$/Score" 
+        << std::setw(10) << "Perf/$" << "\n";
     oss << "-------------------------\n";
     
     for (size_t i = 0; i < cpus.size() && i < 10; ++i) {
@@ -725,9 +649,9 @@ String ResultsFormatter::format_gpu_recommendations(const std::vector<const GPUE
         << std::setw(6) << "Bandw" 
         << std::setw(6) << "Clock" 
         << std::setw(8) << "Score" 
-        << std::setw(8) => "$" 
-        << std::setw(10) => "$/Score" 
-        << std::setw(10) => "Perf/$" << "\n";
+        << std::setw(8) << "$" 
+        << std::setw(10) << "$/Score" 
+        << std::setw(10) << "Perf/$" << "\n";
     oss << "-------------------------\n";
     
     for (size_t i = 0; i < gpus.size() && i < 10; ++i) {
@@ -759,8 +683,8 @@ String ResultsFormatter::format_ram_recommendations(const std::vector<const RAME
         << std::setw(8) << "Capacity" 
         << std::setw(8) << "Speed" 
         << std::setw(6) << "Channels" 
-        << std::setw(8) => "$" 
-        << std::setw(10) => "$/GB" << "\n";
+        << std::setw(8) << "$" 
+        << std::setw(10) << "$/GB" << "\n";
     oss << "--------------------\n";
     
     for (size_t i = 0; i < ram.size() && i < 10; ++i) {
@@ -790,8 +714,8 @@ String ResultsFormatter::format_storage_recommendations(const std::vector<const 
         << std::setw(10) << "Capacity" 
         << std::setw(10) << "Read Speed" 
         << std::setw(10) << "Write Speed" 
-        << std::setw(8) => "$" 
-        << std::setw(10) => "$/GB" << "\n";
+        << std::setw(8) << "$" 
+        << std::setw(10) << "$/GB" << "\n";
     oss << "-------------------------\n";
     
     for (size_t i = 0; i < storage.size() && i < 10; ++i) {
@@ -801,8 +725,8 @@ String ResultsFormatter::format_storage_recommendations(const std::vector<const 
             << std::setw(10) << s->capacity << " GB"
             << std::setw(10) << std::fixed << std::setprecision(0) << s->seq_read << " MB/s"
             << std::setw(10) << std::fixed << std::setprecision(0) << s->seq_write << " MB/s"
-            << std::setw(8) << std::fixed << std::setprecision(1) => s->price_usd
-            << std::setw(10) => (s->price_usd > 0 ? s->price_usd / s->capacity : 0.0) << "\n";
+            << std::setw(8) << std::fixed << std::setprecision(1) << s->price_usd
+            << std::setw(10) << (s->price_usd > 0 ? s->price_usd / s->capacity : 0.0) << "\n";
     }
     
     return oss.str();
@@ -842,38 +766,44 @@ String ResultsFormatter::format_number(u64 num) const {
 String ResultsFormatter::format_duration(Duration d) const {
     using namespace std::chrono;
     
-    if (config_.duration_format == "ms") {
-        auto ms = duration_cast<milliseconds>(d).count();
-        return fmt::format("{} ms", ms);
-    } else if (config_.duration_format == "s") {
-        auto s = duration_cast<seconds>(d).count();
-        auto ms = duration_cast<milliseconds>(d).count() % 1000;
-        if (ms > 0) {
-            return fmt::format("{} s {} ms", s, ms);
-        } else {
-            return fmt::format("{} s", s);
+    switch (config_.duration_format) {
+        case OutputConfig::DurationFormat::Short: {
+            auto ms = duration_cast<milliseconds>(d).count();
+            return fmt::format("{} ms", ms);
         }
-    } else { // Default to human readable
-        auto days = duration_cast<days>(d);
-        d -= days;
-        auto hours = duration_cast<hours>(d);
-        d -= hours;
-        auto minutes = duration_cast<minutes>(d);
-        d -= minutes;
-        auto seconds = duration_cast<seconds>(d);
-        
-        std::string result;
-        if (days.count() > 0) {
-            result += fmt::format("{}d ", days.count());
+        case OutputConfig::DurationFormat::Long: {
+            auto s = duration_cast<seconds>(d).count();
+            auto ms = duration_cast<milliseconds>(d).count() % 1000;
+            if (ms > 0) {
+                return fmt::format("{} s {} ms", s, ms);
+            } else {
+                return fmt::format("{} s", s);
+            }
         }
-        if (hours.count() > 0 || !result.empty()) {
-            result += fmt::format("{}h ", hours.count());
+        case OutputConfig::DurationFormat::ISO:
+        default: {
+            // Human readable format
+            auto days = duration_cast<days>(d);
+            d -= days;
+            auto hours = duration_cast<hours>(d);
+            d -= hours;
+            auto minutes = duration_cast<minutes>(d);
+            d -= minutes;
+            auto seconds = duration_cast<seconds>(d);
+            
+            std::string result;
+            if (days.count() > 0) {
+                result += fmt::format("{}d ", days.count());
+            }
+            if (hours.count() > 0 || !result.empty()) {
+                result += fmt::format("{}h ", hours.count());
+            }
+            if (minutes.count() > 0 || !result.empty()) {
+                result += fmt::format("{}m ", minutes.count());
+            }
+            result += fmt::format("{}s", seconds.count());
+            
+            return result;
         }
-        if (minutes.count() > 0 || !result.empty()) {
-            result += fmt::format("{}m ", minutes.count());
-        }
-        result += fmt::format("{}s", seconds.count());
-        
-        return result;
     }
 }

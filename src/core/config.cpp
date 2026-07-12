@@ -74,7 +74,7 @@ Result<AppConfig> AppConfig::load(const Path& path) {
         if (j.contains("output")) {
             const auto& o = j["output"];
             String fmt = o.value("format", "terminal");
-            if (fmt == "json") config.output.format = OutputConfig::Format::Json;
+            if (fmt == "json") config.output.format = OutputConfig::Format::JSON;
             else if (fmt == "csv") config.output.format = OutputConfig::Format::Csv;
             else if (fmt == "html") config.output.format = OutputConfig::Format::Html;
             else if (fmt == "markdown" || fmt == "md") config.output.format = OutputConfig::Format::Markdown;
@@ -138,7 +138,7 @@ Result<void> AppConfig::save(const Path& path) const {
     
     String fmt_str;
     switch (output.format) {
-        case OutputConfig::Format::Json: fmt_str = "json"; break;
+        case OutputConfig::Format::JSON: fmt_str = "json"; break;
         case OutputConfig::Format::Csv: fmt_str = "csv"; break;
         case OutputConfig::Format::Html: fmt_str = "html"; break;
         case OutputConfig::Format::Markdown: fmt_str = "markdown"; break;

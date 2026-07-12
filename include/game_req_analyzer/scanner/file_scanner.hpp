@@ -7,12 +7,12 @@
 namespace game_req {
 
 struct ScanStats {
-    std::atomic<u64> files_scanned{0};
-    std::atomic<u64> total_size{0};
-    std::atomic<u64> archives_found{0};
-    std::atomic<u64> archives_extracted{0};
-    std::atomic<u64> errors{0};
-    std::atomic<u32> current_depth{0};
+    u64 files_scanned = 0;
+    u64 total_size = 0;
+    u64 archives_found = 0;
+    u64 archives_extracted = 0;
+    u64 errors = 0;
+    u32 current_depth = 0;
     TimePoint start_time;
     TimePoint end_time;
     
@@ -32,8 +32,8 @@ struct ScanResult {
     std::vector<Error> errors;
     Path root_path;
     
-    [[nodiscard]] u64 total_size() const { return stats.total_size.load(); }
-    [[nodiscard]] u64 file_count() const { return stats.files_scanned.load(); }
+    [[nodiscard]] u64 total_size() const { return stats.total_size; }
+    [[nodiscard]] u64 file_count() const { return stats.files_scanned; }
     
     template<typename Pred>
     [[nodiscard]] std::vector<FileInfo> filter(Pred&& pred) const {
@@ -75,7 +75,7 @@ public:
     [[nodiscard]] std::vector<String> supported_extensions() const;
 
 private:
-    ArchiveManager() = default;
+    ArchiveManager();
     std::unordered_map<FileType, std::unique_ptr<ArchiveHandler>> handlers_;
     mutable std::shared_mutex mutex_;
 };
@@ -92,14 +92,14 @@ public:
     [[nodiscard]] const ScanStats& stats() const { return stats_; }
 
 private:
-    ScanConfig config_;
-    ScanStats stats_;
+    ScanResult results_;
     std::atomic<bool> cancelled_{false};
     std::mutex results_mutex_;
-    ScanResult results_;
+    ScanConfig config_;
+    ScanStats stats_;
     
     void scan_directory(const Path& dir, u32 depth);
-    Result<void> scan_file(const Path& file);
+    Result<FileInfo> scan_file(const Path& file);
     Result<void> process_archive(const FileInfo& archive);
     void update_stats(const FileInfo& file);
 };

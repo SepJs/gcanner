@@ -6,6 +6,12 @@
 #include <game_req_analyzer/analyzers/model_analyzer.hpp>
 #include <game_req_analyzer/analyzers/audio_analyzer.hpp>
 #include <game_req_analyzer/analyzers/script_analyzer.hpp>
+#include <game_req_analyzer/analyzers/executable_analyzer.hpp>
+#include <game_req_analyzer/analyzers/shader_analyzer.hpp>
+#include <game_req_analyzer/analyzers/particle_analyzer.hpp>
+#include <game_req_analyzer/analyzers/physics_analyzer.hpp>
+#include <game_req_analyzer/analyzers/ai_analyzer.hpp>
+#include <game_req_analyzer/analyzers/network_analyzer.hpp>
 #include <game_req_analyzer/analyzers/asset_aggregator.hpp>
 #include <game_req_analyzer/analyzers/requirement_calculator.hpp>
 #include <game_req_analyzer/hardware/hardware_database.hpp>
@@ -80,7 +86,7 @@ Result<Application::ParsedArgs> Application::parse_args(int argc, char* argv[]) 
         } else if (arg == "-f" || arg == "--format") {
             if (i + 1 < argc) {
                 StringView fmt = argv[++i];
-                if (fmt == "json") args.output_format = OutputConfig::Format::Json;
+                if (fmt == "json") args.output_format = OutputConfig::Format::JSON;
                 else if (fmt == "csv") args.output_format = OutputConfig::Format::Csv;
                 else if (fmt == "html") args.output_format = OutputConfig::Format::Html;
                 else if (fmt == "md" || fmt == "markdown") args.output_format = OutputConfig::Format::Markdown;
@@ -299,6 +305,11 @@ Result<void> Application::run_scan(const ParsedArgs& args) {
     AudioAnalyzer aud_analyzer(config_.analyzer);
     ScriptAnalyzer scr_analyzer(config_.analyzer);
     ExecutableAnalyzer exe_analyzer(config_.analyzer);
+    ShaderAnalyzer shd_analyzer(config_.analyzer);
+    ParticleAnalyzer par_analyzer(config_.analyzer);
+    PhysicsAnalyzer phy_analyzer(config_.analyzer);
+    AIAnalyzer ai_analyzer(config_.analyzer);
+    NetworkAnalyzer net_analyzer(config_.analyzer);
     
     auto textures = scan_result->by_category(FileCategory::Texture);
     auto models = scan_result->by_category(FileCategory::Model3D);
@@ -306,35 +317,61 @@ Result<void> Application::run_scan(const ParsedArgs& args) {
     auto scripts = scan_result->by_category(FileCategory::Script);
     auto executables = scan_result->by_category(FileCategory::Executable);
     auto libraries = scan_result->by_category(FileCategory::Library);
+    auto shaders = scan_result->by_category(FileCategory::Shader);
+    auto particles = scan_result->by_category(FileCategory::Particle);
+    auto physics = scan_result->by_category(FileCategory::Physics);
+    auto ai_files = scan_result->by_category(FileCategory::AI);
+    auto network = scan_result->by_category(FileCategory::Network);
     executables.insert(executables.end(), libraries.begin(), libraries.end());
     
-    ui.show_progress(0.2f, "Analyzing textures...");
+    ui.show_progress(0.15f, "Analyzing textures...");
     auto tex_result = tex_analyzer.analyze(textures);
     
-    ui.show_progress(0.4f, "Analyzing 3D models...");
+    ui.show_progress(0.25f, "Analyzing 3D models...");
     auto mdl_result = mdl_analyzer.analyze(models);
     
-    ui.show_progress(0.6f, "Analyzing audio...");
+    ui.show_progress(0.35f, "Analyzing audio...");
     auto aud_result = aud_analyzer.analyze(audio);
     
-    ui.show_progress(0.7f, "Analyzing scripts...");
+    ui.show_progress(0.45f, "Analyzing scripts...");
     auto scr_result = scr_analyzer.analyze(scripts);
     
-    ui.show_progress(0.8f, "Analyzing executables...");
+    ui.show_progress(0.55f, "Analyzing executables...");
     auto exe_result = exe_analyzer.analyze(executables);
     
-    if (!tex_result || !mdl_result || !aud_result || !scr_result || !exe_result) {
+    ui.show_progress(0.65f, "Analyzing shaders...");
+    auto shd_result = shd_analyzer.analyze(shaders);
+    
+    ui.show_progress(0.75f, "Analyzing particle systems...");
+    auto par_result = par_analyzer.analyze(particles);
+    
+    ui.show_progress(0.80f, "Analyzing physics...");
+    auto phy_result = phy_analyzer.analyze(physics);
+    
+    ui.show_progress(0.85f, "Analyzing AI systems...");
+    auto ai_result = ai_analyzer.analyze(ai_files);
+    
+    ui.show_progress(0.90f, "Analyzing network systems...");
+    auto net_result = net_analyzer.analyze(network);
+    
+    if (!tex_result || !mdl_result || !aud_result || !scr_result || !exe_result || 
+        !shd_result || !par_result || !phy_result || !ai_result || !net_result) {
         return make_unexpected(MAKE_ERROR(ErrorCode::ParseError, "Analysis failed"));
     }
     
-    ui.show_progress(0.9f, "Aggregating results...");
+    ui.show_progress(0.92f, "Aggregating results...");
     AssetAggregator aggregator(config_.analyzer);
     auto agg_result = aggregator.aggregate(
         tex_analyzer.stats(),
         mdl_analyzer.stats(),
         aud_analyzer.stats(),
         scr_analyzer.stats(),
-        exe_analyzer.stats()
+        exe_analyzer.stats(),
+        shd_analyzer.stats(),
+        par_analyzer.stats(),
+        phy_analyzer.stats(),
+        ai_analyzer.stats(),
+        net_analyzer.stats()
     );
     
     if (!agg_result) {
@@ -364,7 +401,7 @@ Result<void> Application::run_scan(const ParsedArgs& args) {
         ResultsFormatter formatter(config_.output);
         String output;
         switch (args.output_format) {
-            case OutputConfig::Format::Json:
+            case OutputConfig::Format::JSON:
                 output = formatter.format_json(*req_result);
                 break;
             case OutputConfig::Format::Csv:

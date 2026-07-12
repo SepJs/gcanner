@@ -554,3 +554,24 @@ std::vector<String> StringUtils::WildcardMatcher::filter(const std::vector<Strin
 }
 
 } // namespace game_req
+
+Result<String> StringUtils::read_text_file(const Path& path) {
+    std::ifstream file(path, std::ios::in | std::ios::binary);
+    if (!file) {
+        return make_unexpected(MAKE_ERROR(ErrorCode::IoError, std::format("Cannot open file: {}", path.string())));
+    }
+    
+    std::string content;
+    file.seekg(0, std::ios::end);
+    content.reserve(file.tellg());
+    file.seekg(0, std::ios::beg);
+    content.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+    
+    if (!file) {
+        return make_unexpected(MAKE_ERROR(ErrorCode::IoError, std::format("Failed to read file: {}", path.string())));
+    }
+    
+    return content;
+}
+
+} // namespace game_req

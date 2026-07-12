@@ -12,7 +12,9 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 
-using namespace game_req;
+#define APP_VERSION "1.0.0"
+
+namespace game_req {
 
 TerminalUI::TerminalUI(const OutputConfig& config) : config_(config) {}
 
@@ -166,40 +168,34 @@ void TerminalUI::show_requirements(const RequirementResult& req) {
     
     // Minimum requirements
     fmt::print(fg(fmt::color::green) | fmt::emphasis::bold, "MINIMUM REQUIREMENTS:\n");
-    fmt::print("  OS: {}\n", req.minimum.os);
-    fmt::print("  CPU: {} @ {:.1f} GHz ({} cores/{} threads)\n", 
-               req.minimum.cpu.name, 
-               req.minimum.cpu.base_clock,
-               req.minimum.cpu.cores,
-               req.minimum.cpu.threads);
-    fmt::print("  GPU: {} ({} GB VRAM)\n", 
-               req.minimum.gpu.name,
-               req.minimum.gpu.vram / 1024);
-    fmt::print("  RAM: {} GB\n", req.minimum.ram);
+    fmt::print("  OS: {}\n", req.minimum.os_minimum);
+    fmt::print("  CPU: {} {} @ {:.1f}-{:.1f} GHz ({} cores/{} threads)\n", 
+               req.minimum.cpu_vendor, req.minimum.cpu_arch,
+               req.minimum.cpu_base_clock, req.minimum.cpu_boost_clock,
+               req.minimum.cpu_cores, req.minimum.cpu_threads);
+    fmt::print("  GPU: {} {} ({} GB VRAM)\n", 
+               req.minimum.gpu_vendor, req.minimum.gpu_architecture,
+               req.minimum.gpu_vram / 1024);
+    fmt::print("  RAM: {} GB ({})\n", req.minimum.ram_capacity / 1024, req.minimum.ram_type);
     fmt::print("  Storage: {} {} ({} GB available)\n", 
-               req.minimum.storage.type,
-               req.minimum.storage.name,
-               req.minimum.storage.capacity);
-    fmt::print("  DirectX: {}\n", req.minimum.directx);
+               req.minimum.storage_type, req.minimum.storage_type, req.minimum.storage_capacity);
+    fmt::print("  DirectX: {}\n", req.minimum.dx_version);
     fmt::print("\n");
     
     // Recommended requirements
     fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "RECOMMENDED REQUIREMENTS:\n");
-    fmt::print("  OS: {}\n", req.recommended.os);
-    fmt::print("  CPU: {} @ {:.1f} GHz ({} cores/{} threads)\n", 
-               req.recommended.cpu.name, 
-               req.recommended.cpu.base_clock,
-               req.recommended.cpu.cores,
-               req.recommended.cpu.threads);
-    fmt::print("  GPU: {} ({} GB VRAM)\n", 
-               req.recommended.gpu.name,
-               req.recommended.gpu.vram / 1024);
-    fmt::print("  RAM: {} GB\n", req.recommended.ram);
+    fmt::print("  OS: {}\n", req.recommended.os_recommended);
+    fmt::print("  CPU: {} {} @ {:.1f}-{:.1f} GHz ({} cores/{} threads)\n", 
+               req.recommended.cpu_vendor, req.recommended.cpu_arch,
+               req.recommended.cpu_base_clock, req.recommended.cpu_boost_clock,
+               req.recommended.cpu_cores, req.recommended.cpu_threads);
+    fmt::print("  GPU: {} {} ({} GB VRAM)\n", 
+               req.recommended.gpu_vendor, req.recommended.gpu_architecture,
+               req.recommended.gpu_vram / 1024);
+    fmt::print("  RAM: {} GB ({})\n", req.recommended.ram_capacity / 1024, req.recommended.ram_type);
     fmt::print("  Storage: {} {} ({} GB available)\n", 
-               req.recommended.storage.type,
-               req.recommended.storage.name,
-               req.recommended.storage.capacity);
-    fmt::print("  DirectX: {}\n", req.recommended.directx);
+               req.recommended.storage_type, req.recommended.storage_type, req.recommended.storage_capacity);
+    fmt::print("  DirectX: {}\n", req.recommended.dx_version);
     
     if (config_.verbose || config_.show_details) {
         fmt::print("\n");
@@ -212,52 +208,24 @@ void TerminalUI::show_hardware_recommendations(const RequirementResult& req) {
     
     fmt::print(fg(fmt::color::green), "✓ Hardware recommendations generated\n\n");
     
-    // CPU recommendations
+    // CPU recommendations - using database query
     fmt::print(fg(fmt::color::cyan) | fmt::emphasis::bold, "CPU RECOMMENDATIONS:\n");
-    if (!req.cpu_alternatives.empty()) {
-        fmt::print("{:<4} {:<25} {:<8} {:<6} {:<6} {:<8} {:<8} {:<8} {:<8}\n", 
-                   "#", "Model", "Cores", "Threads", "GHz", "Score", "$", "$/Score", "Perf/$");
-        fmt::print("-------------------------------------------------------------------------------\n");
-        for (size_t i = 0; i < req.cpu_alternatives.size() && i < 5; ++i) {
-            const auto& cpu = req.cpu_alternatives[i];
-            fmt::print("{:<4} {:<25} {:<8} {:<6} {:<6.1f} {:<8} ${:<7.1f} {:<8.2f} {:<8.2f}\n",
-                       static_cast<int>(i+1),
-                       cpu->name.substr(0, 24),
-                       cpu->cores,
-                       cpu->threads,
-                       cpu->base_clock,
-                       cpu->passmark_mt,
-                       cpu->price_usd,
-                       cpu->price_usd > 0 ? cpu->passmark_mt / cpu->price_usd : 0.0f,
-                       cpu->performance_per_dollar());
-        }
-    } else {
-        fmt::print("  No CPU recommendations available\n");
-    }
+    fmt::print("  Minimum: {} {} ({} cores, {:.1f} GHz base)\n",
+               req.minimum.cpu_vendor, req.minimum.cpu_arch,
+               req.minimum.cpu_cores, req.minimum.cpu_base_clock);
+    fmt::print("  Recommended: {} {} ({} cores, {:.1f} GHz base)\n",
+               req.recommended.cpu_vendor, req.recommended.cpu_arch,
+               req.recommended.cpu_cores, req.recommended.cpu_base_clock);
     fmt::print("\n");
     
     // GPU recommendations
     fmt::print(fg(fmt::color::cyan) | fmt::emphasis::bold, "GPU RECOMMENDATIONS:\n");
-    if (!req.gpu_alternatives.empty()) {
-        fmt::print("{:<4} {:<25} {:<6} {:<6} {:<6} {:<8} {:<8} {:<8} {:<8}\n", 
-                   "#", "Model", "VRAM", "Bandw", "Clock", "Score", "$", "$/Score", "Perf/$");
-        fmt::print("-------------------------------------------------------------------------------\n");
-        for (size_t i = 0; i < req.gpu_alternatives.size() && i < 5; ++i) {
-            const auto& gpu = req.gpu_alternatives[i];
-            fmt::print("{:<4} {:<25} {:<6} {:<6} {:<6} {:<8} ${:<7.1f} {:<8.2f} {:<8.2f}\n",
-                       static_cast<int>(i+1),
-                       gpu->name.substr(0, 24),
-                       gpu->vram / 1024,
-                       static_cast<int>(gpu->vram_bandwidth),
-                       static_cast<int>(gpu->boost_clock),
-                       gpu->passmark_g3d,
-                       gpu->price_usd,
-                       gpu->price_usd > 0 ? gpu->passmark_g3d / gpu->price_usd : 0.0f,
-                       gpu->performance_per_dollar());
-        }
-    } else {
-        fmt::print("  No GPU recommendations available\n");
-    }
+    fmt::print("  Minimum: {} {} ({} GB VRAM)\n",
+               req.minimum.gpu_vendor, req.minimum.gpu_architecture,
+               req.minimum.gpu_vram / 1024);
+    fmt::print("  Recommended: {} {} ({} GB VRAM)\n",
+               req.recommended.gpu_vendor, req.recommended.gpu_architecture,
+               req.recommended.gpu_vram / 1024);
     fmt::print("\n");
 }
 
@@ -480,7 +448,7 @@ void TerminalUI::detect_terminal_size() {
     }
 }
 
-void TerminalUI::print_colored(fmt::terminal_color color, StringView text) {
+void TerminalUI::print_colored(fmt::color color, StringView text) {
     if (!initialized_ || !color_) {
         fmt::print("{}", text);
         return;
@@ -490,7 +458,7 @@ void TerminalUI::print_colored(fmt::terminal_color color, StringView text) {
     std::fflush(stdout);
 }
 
-void TerminalUI::print_line(char ch, fmt::terminal_color color) {
+void TerminalUI::print_line(char ch, fmt::color color) {
     if (!initialized_) return;
     
     auto [width, height] = terminal_size();
@@ -595,38 +563,44 @@ String TerminalUI::format_duration(Duration d) const {
     
     using namespace std::chrono;
     
-    if (config_.duration_format == "ms") {
-        auto ms = duration_cast<milliseconds>(d).count();
-        return fmt::format("{} ms", ms);
-    } else if (config_.duration_format == "s") {
-        auto s = duration_cast<seconds>(d).count();
-        auto ms = duration_cast<milliseconds>(d).count() % 1000;
-        if (ms > 0) {
-            return fmt::format("{} s {} ms", s, ms);
-        } else {
-            return fmt::format("{} s", s);
+    switch (config_.duration_format) {
+        case OutputConfig::DurationFormat::Short: {
+            auto ms = duration_cast<milliseconds>(d).count();
+            return fmt::format("{} ms", ms);
         }
-    } else { // Default to human readable
-        auto days = duration_cast<days>(d);
-        d -= days;
-        auto hours = duration_cast<hours>(d);
-        d -= hours;
-        auto minutes = duration_cast<minutes>(d);
-        d -= minutes;
-        auto seconds = duration_cast<seconds>(d);
-        
-        std::string result;
-        if (days.count() > 0) {
-            result += fmt::format("{}d ", days.count());
+        case OutputConfig::DurationFormat::Long: {
+            auto s = duration_cast<seconds>(d).count();
+            auto ms = duration_cast<milliseconds>(d).count() % 1000;
+            if (ms > 0) {
+                return fmt::format("{} s {} ms", s, ms);
+            } else {
+                return fmt::format("{} s", s);
+            }
         }
-        if (hours.count() > 0 || !result.empty()) {
-            result += fmt::format("{}h ", hours.count());
+        case OutputConfig::DurationFormat::ISO:
+        default: {
+            // Human readable format
+            auto days_dur = duration_cast<std::chrono::days>(d);
+            d -= days_dur;
+            auto hours_dur = duration_cast<hours>(d);
+            d -= hours_dur;
+            auto minutes_dur = duration_cast<minutes>(d);
+            d -= minutes_dur;
+            auto seconds_dur = duration_cast<seconds>(d);
+            
+            std::string result;
+            if (days_dur.count() > 0) {
+                result += fmt::format("{}d ", days_dur.count());
+            }
+            if (hours_dur.count() > 0 || !result.empty()) {
+                result += fmt::format("{}h ", hours_dur.count());
+            }
+            if (minutes_dur.count() > 0 || !result.empty()) {
+                result += fmt::format("{}m ", minutes_dur.count());
+            }
+            result += fmt::format("{}s", seconds_dur.count());
+            
+            return result;
         }
-        if (minutes.count() > 0 || !result.empty()) {
-            result += fmt::format("{}m ", minutes.count());
-        }
-        result += fmt::format("{}s", seconds.count());
-        
-        return result;
     }
 }

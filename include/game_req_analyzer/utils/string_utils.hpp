@@ -58,8 +58,10 @@ public:
     static String unescape_json(StringView str);
     static String escape_html(StringView str);
     static String unescape_html(StringView str);
-    static String escape_regex(StringView str);
+static String escape_regex(StringView str);
     
+    static Result<String> read_text_file(const Path& path);
+
     static std::vector<String> tokenize(StringView str, StringView delimiters = " \t\n\r");
     static String detokenize(const std::vector<String>& tokens, StringView delimiter = " ");
     
@@ -67,7 +69,7 @@ public:
     static String dedent(StringView str);
     
     static String wrap(StringView str, u32 width, StringView indent = "");
-    
+
     struct Tokenizer {
         StringView data;
         StringView delimiters;
