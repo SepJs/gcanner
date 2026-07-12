@@ -40,4 +40,4 @@ Installing on Linux:
   cmake --install build --prefix /usr/local
 
 License: MIT
-Website: https://github.com/gcanner/gcanner
+Website: https://github.com/SepJs/gcanner

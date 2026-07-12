@@ -122,7 +122,7 @@ Priority: optional
 Architecture: amd64
 Installed-Size: $INSTALLED_SIZE
 Maintainer: gcanner contributors <gcanner@gcanner.org>
-Homepage: https://github.com/gcanner/gcanner
+Homepage: https://github.com/SepJs/gcanner
 Description: Game System Requirements Analyzer
  gcanner scans game directories and analyzes assets to generate
  detailed system requirement reports including minimum, recommended,
@@ -159,7 +159,7 @@ Version: $APP_VERSION
 Release: 1%{?dist}
 Summary: Game System Requirements Analyzer
 License: MIT
-URL: https://github.com/gcanner/gcanner
+URL: https://github.com/SepJs/gcanner
 Source0: %{name}-%{version}.tar.gz
 BuildArch: x86_64
 Requires: qt6-qtbase, qt6-qtcharts, qt6-qtsvg

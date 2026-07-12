@@ -14,7 +14,7 @@ NC='\033[0m'
 
 APP_NAME="gcanner"
 VERSION="1.0.0"
-REPO="gcanner/gcanner"
+REPO="SepJs/gcanner"
 INSTALL_DIR="/opt/gcanner"
 BIN_DIR="/usr/local/bin"
 

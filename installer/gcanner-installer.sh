@@ -6,7 +6,7 @@
 set -e
 
 APP_NAME="gcanner"
-REPO="gcanner/gcanner"
+REPO="SepJs/gcanner"
 INSTALL_DIR="/opt/gcanner"
 BIN_DIR="/usr/local/bin"
 

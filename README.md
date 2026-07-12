@@ -54,7 +54,7 @@ irm https://get.gcanner.org/install.ps1 | iex
 
 ### Pre-built Installers
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/gcanner/gcanner/releases):
+Download the latest release for your platform from [GitHub Releases](https://github.com/SepJs/gcanner/releases):
 
 | Platform | Installer |
 |----------|-----------|
@@ -88,7 +88,7 @@ sudo rpm -i gcanner-1.0.0-x86_64.rpm
 **Build:**
 ```bash
 # Clone the repository
-git clone https://github.com/gcanner/gcanner.git
+git clone https://github.com/SepJs/gcanner.git
 cd gcanner
 
 # Create and navigate to build directory

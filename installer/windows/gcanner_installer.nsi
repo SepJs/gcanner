@@ -8,7 +8,7 @@
 !define APP_NAME "gcanner"
 !define APP_VERSION "1.0.0"
 !define APP_PUBLISHER "gcanner contributors"
-!define APP_WEBSITE "https://github.com/gcanner/gcanner"
+!define APP_WEBSITE "https://github.com/SepJs/gcanner"
 !define APP_EXE "gcanner_gui.exe"
 !define INSTALLER_NAME "gcanner-${APP_VERSION}-windows-x64.exe"
 

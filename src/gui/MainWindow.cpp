@@ -134,10 +134,10 @@ void MainWindow::setupMenus() {
     helpMenu->addSeparator();
 
     QAction* actDocumentation = helpMenu->addAction("&Documentation", [](){
-        QDesktopServices::openUrl(QUrl("https://github.com/gcanner/gcanner/wiki"));
+        QDesktopServices::openUrl(QUrl("https://github.com/SepJs/gcanner/wiki"));
     });
     QAction* actReportBug = helpMenu->addAction("&Report Issue", [](){
-        QDesktopServices::openUrl(QUrl("https://github.com/gcanner/gcanner/issues"));
+        QDesktopServices::openUrl(QUrl("https://github.com/SepJs/gcanner/issues"));
     });
 }
 
